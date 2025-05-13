@@ -1,0 +1,293 @@
+:root {
+  /* Typography */
+  --font-family: 'Montserrat', sans-serif;
+  --font-size-title: 24px;
+  --font-size-body: 16px;
+
+  /* Brand Colors */
+  --primary-color: #016768;
+  --secondary-color: #b8bd6e;
+  --third-color: #646c71;
+  --fourth-color: #ace7ca;
+
+  /* Button Palette */
+  --btn-gray-bg: #6c757d;
+  --btn-gray-hover: #5a6268;
+  --btn-aqua-bg: #17a2b8;
+  --btn-aqua-hover: #138496;
+  --btn-orange-bg: #fd7e14;
+  --btn-orange-hover: #e96b0d;
+  --btn-black-bg: #212529;
+  --btn-black-hover: #101214;
+  --btn-text-color: #ffffff;
+
+  /* Form & Focus */
+  --focus-color: #17a2b8;
+  --focus-shadow: rgba(23, 162, 184, 0.2);
+
+  /* Alerts & Status */
+  --error-color: rgb(241, 124, 14);
+  --context1-color: rgb(95, 167, 235);
+  --context2-color: rgb(241, 124, 14);
+
+  /* Table & Card Borders */
+  --border-light: #dee2e6;
+
+  /* Base Grays */
+  --gray-light: #f8f9fa;
+  --gray-lighter: #f1f3f5;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 10hv;
+  height: 10hv;
+  overflow-x: hidden;
+  font-family: var(--font-family);
+  font-size: var(--font-size-body);
+  color-scheme: light;
+  background-color: white; 
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* BUTTONS */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 5px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  text-decoration: none;
+  text-align: center;
+}
+
+.btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.btn-gray {
+  background-color: var(--btn-gray-bg);
+  color: var(--btn-text-color);
+}
+.btn-gray:hover {
+  background-color: var(--btn-gray-hover);
+  box-shadow: 0 2px 6px rgba(108, 117, 125, 0.4);
+}
+
+.btn-aqua {
+  background-color: var(--btn-aqua-bg);
+  color: var(--btn-text-color);
+}
+.btn-aqua:hover {
+  background-color: var(--btn-aqua-hover);
+  box-shadow: 0 2px 6px rgba(23, 162, 184, 0.4);
+}
+
+.btn-orange {
+  background-color: var(--btn-orange-bg);
+  color: var(--btn-text-color);
+}
+.btn-orange:hover {
+  background-color: var(--btn-orange-hover);
+  box-shadow: 0 2px 6px rgba(253, 126, 20, 0.4);
+}
+
+.btn-black {
+  background-color: var(--btn-black-bg);
+  color: var(--btn-text-color);
+}
+.btn-black:hover {
+  background-color: var(--btn-black-hover);
+  box-shadow: 0 2px 6px rgba(33, 37, 41, 0.4);
+}
+
+.btn-outline {
+  background-color: transparent;
+  border: 2px solid currentColor;
+}
+.btn-outline:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* FORMS */
+body, input, textarea, select, button {
+  font-family: var(--font-family);
+}
+
+.form-label {
+  display: block;
+  font-weight: 600;
+  color: #212529;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.form-control {
+  width: 100%;
+  height: 40px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+.form-control:focus {
+  outline: none;
+  border-color: var(--focus-color);
+  box-shadow: 0 0 0 2px var(--focus-shadow);
+}
+
+/* TABLES */
+.table-responsive {
+  overflow-x: auto;
+  width: 100%;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-family: var(--font-family);
+  background-color: #fff;
+}
+.table thead {
+  background-color: var(--gray-light);
+  font-weight: 600;
+}
+.table thead th,
+.table tbody td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-light);
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.table-striped tbody tr:nth-child(odd) {
+  background-color: #f9f9f9;
+}
+
+.table-bordered th,
+.table-bordered td {
+  border: 1px solid var(--border-light);
+}
+
+.table tbody tr:hover {
+  background-color: #eef6f8;
+}
+
+/* MODALS, CARDS, ALERTS, etc. */
+/* Add similar variable-driven styles as needed */
+
+@media (max-width: 768px) {
+  :root {
+    --font-size-title: 20px;
+    --font-size-body: 14px;
+  }
+}
+
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.hidden {
+  display: none;
+}
+
+/* Capa de fondo semitransparente */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* El cuadro del modal */
+.modal {
+  background: #fff;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+  padding: 1.5rem;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Header del modal con flex para empujar la “×” a la derecha */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+/* Botón de cierre (la “×”) */
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Hover de la “×” */
+.modal-close:hover {
+  color: #333;
+}
+.footer {
+  flex-shrink: 0;           /* no se contrae */
+  width: 100%;              /* ocupa todo el ancho */
+  padding: 1rem;
+  background-color: #f0f0f0; /* o blanco si lo prefieres */
+  text-align: center;
+}.mainContainer {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: white;
+}
+
+/* Contenido central: que crezca */
+.contentContainerLogin {
+  flex: 1;
+  /* ya tenías aquí tu padding/margins y overflow, déjalos */
+}
+
+/* Si tu FooterContainer no ocupa todo el ancho por defecto,
+   dale un width: 100% */
+.mainContainer > footer, /* o la etiqueta que use tu FooterContainer */
+.mainContainer > .footer {
+  width: 100%;
+}
