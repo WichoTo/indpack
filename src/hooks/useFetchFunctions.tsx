@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import type { User , Sucursal, } from '../config/types';
+import type { User , Sucursal,Document } from '../config/types';
 import { supabase } from '../config/supabase';
+import { normalizeFileName } from './useUtilsFunctions';
 //import { normalizeFileName } from './useUtilsFunctions';
 
 const API_BASE = 'https://server-murex-theta.vercel.app';
@@ -50,7 +51,7 @@ export const actualizarUsuario = async (usuario: User): Promise<void> => {
     let userId = id;
     if (!userId) {
       const res = await fetch(
-        "https://server-murex-theta.vercel.app/upsert-user",
+        `${API_BASE}/upsert-user`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -107,7 +108,7 @@ export const eliminarUsuario = async (userId: string): Promise<void> => {
 
   try {
     console.log(`🛠️ Eliminando usuario ${userId} `);
-    const response = await fetch(`https://server-murex-theta.vercel.app/delete-user/${userId}`, {
+    const response = await fetch(`${API_BASE}/delete-user/${userId}`, {
       method: "DELETE",
     });
     if (!response.ok) {
@@ -129,7 +130,7 @@ export function useUsuariosService() {
     setError(null);
 
     try {
-      const res = await fetch('https://server-murex-theta.vercel.app/api/users', {
+      const res = await fetch(`${API_BASE}/api/users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: usuario.email }),
@@ -251,3 +252,46 @@ export const useFetchSucursales = () => {
 
   return { sucursales, loading, error, fetchSucusales };
 };
+
+
+export async function actualizarSucursal(
+  sucursal: Sucursal
+): Promise<Sucursal> {
+  const storage = supabase.storage.from('sucursales')
+  const uploaded: string[] = []
+
+  async function uploadDoc(doc?: Document): Promise<Document | null> {
+    if (!doc) return null
+    if (!doc.file) {
+      const { file, ...rest } = doc
+      return Object.keys(rest).length ? (rest as Document) : null
+    }
+    const safeName = normalizeFileName(doc.file.name)
+    const path = `${sucursal.id}/${safeName}`
+
+    // Elimina versión anterior y sube la nueva
+    await storage.remove([path]).catch(() => {})
+    const { error: upErr } = await storage.upload(path, doc.file, { upsert: true })
+    if (upErr) throw upErr
+    uploaded.push(path)
+    return { id: path, nombre: doc.file.name, url: path, path, bucket: 'sucursales' }
+  }
+
+  // Procesa todas las imágenes
+  const imgs = await Promise.all((sucursal.fotoSucursal || []).map(uploadDoc))
+  const payload: Sucursal = { ...sucursal, fotoSucursal: imgs.filter(Boolean) as Document[] }
+
+  try {
+    // Inserta o actualiza
+    const { data, error } = await supabase
+      .from('sucursales')
+      .upsert(payload, { onConflict: 'id' })
+      .select()
+    if (error) throw error
+    return data![0]
+  } catch (err) {
+    // En caso de fallo, limpia todo lo subido
+    if (uploaded.length) await storage.remove(uploaded).catch(() => {})
+    throw err
+  }
+}

@@ -38,8 +38,10 @@ export interface Sucursal {
   id: string;
   userid: string;
   nombreSucursal:string;
+  telefono: string;
   direccion: string;
   estado: string;
+  areas:string[]
   fotoSucursal: Document[];
 
 }

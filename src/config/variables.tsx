@@ -33,6 +33,14 @@ export const routes: RouteConfig[] = [
     element: React.lazy(() => import('../pages/configpages/UsuariosPage')),
     hideProjectSelector: true,
   },
+  {
+        path: 'sucursales',
+        name: 'Sucursales',
+        icon: BusinessIcon,
+        rol: ['Administrador'],
+        element: React.lazy(() => import('../pages/configpages/SucursalesPage')),
+        hideProjectSelector: true,
+      },
 ]
 
 export const routesNav: RouteConfig[] = [
@@ -48,15 +56,23 @@ export const routesNav: RouteConfig[] = [
     name: 'Configuración',
     icon: BusinessIcon,
     element: React.lazy(() => import('../pages/IndexPage')),
-    rol: ['Gerente', 'Administrador'],
+    rol: ['Administrador'],
     hideProjectSelector: true,   // opcional para el padre
     children: [
       {
         path: 'usuarios',
         name: 'Usuarios',
         icon: PeopleIcon,
-        rol: ['Administrador','Gerente',],
+        rol: ['Administrador'],
         element: React.lazy(() => import('../pages/configpages/UsuariosPage')),
+        hideProjectSelector: true,
+      },
+      {
+        path: 'sucursales',
+        name: 'Sucursales',
+        icon: BusinessIcon,
+        rol: ['Administrador'],
+        element: React.lazy(() => import('../pages/configpages/SucursalesPage')),
         hideProjectSelector: true,
       },
     ]
