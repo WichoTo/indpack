@@ -80,7 +80,7 @@ export const routesNav: RouteConfig[] = [
     name: 'Home',
     icon: BusinessIcon,
     element: React.lazy(() => import('../pages/IndexPage')),
-    hideSucursalSelector: false,
+    hideSucursalSelector: true,
   },
   {
     path: 'configuracion',

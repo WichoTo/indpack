@@ -19,22 +19,25 @@ import MaterialModal from '../../components/configuracion/MaterialModal'
 import { useAuthRole } from '../../config/auth'
 import Spinner from '../../components/general/Spinner'
 import { formatoMoneda } from '../../hooks/useUtilsFunctions'
+import { useSucursal } from '../../config/context/SucursalContext'
 
 const MaterialesPage: React.FC = () => {
   const { user } = useAuthRole()
+  const {selectedSucursal} = useSucursal();
 
   const initialMaterial: Material = {
     id: crypto.randomUUID(),
     userid: user?.id ?? '',
-    sucursalid:'',
+    sucursalid:selectedSucursal?.id ||"",
     nombre: '',
     tipo: '',
     precio: 0,
     peso: 0,
+
   }
 
   const [loading, setLoading] = useState(false)
-  const { materiales } = useFetchMateriales()
+  const { materiales } = useFetchMateriales(selectedSucursal?.id)
   const [modalOpen, setModalOpen] = useState(false)
   const [material, setMaterial] = useState<Material>(initialMaterial)
 

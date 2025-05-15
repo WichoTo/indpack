@@ -297,8 +297,58 @@ export async function actualizarSucursal(
 }
 
 /////////////////////////////////////////////////MATERIALES////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+export const useFetchMateriales = (sucursalid?: string) => {
+  const [materiales, setMateriales] = useState<Material[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-export const useFetchMateriales = () => {
+  const fetchMateriales = async () => {
+    setLoading(true);
+    try {
+      let query = supabase.from('materiales').select('*');
+      if (sucursalid) {
+        query = query.eq('sucursalid', sucursalid);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      setMateriales(data || []);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMateriales();
+  }, [sucursalid]);
+
+  useEffect(() => {
+    if (!sucursalid) return;
+    const channel = supabase
+      .channel(`materiales_suc_${sucursalid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'materiales',
+          filter: `sucursalid=eq.${sucursalid}`,
+        },
+        () => {
+          fetchMateriales();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sucursalid]);
+
+  return { materiales, loading, error, fetchMateriales };
+};
+export const useFetchMaterialesGeneral = () => {
   const [materiales, setMateriales] = useState<Material[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);

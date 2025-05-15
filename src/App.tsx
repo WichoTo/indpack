@@ -19,63 +19,64 @@ function App() {
   return (
     <Router>
       <Suspense fallback={<Spinner open={true} />}>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/reset" element={<ResetPasswordPage />} />
+      
+        <SucursalProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/reset" element={<ResetPasswordPage />} />
 
-          <Route
-            element={
-              <RequireAuth>
-                <SucursalProvider>
-                  <Layout />
-                </SucursalProvider>
-              </RequireAuth>
-            }
-          >
-
-            {routes.map(ruta => {
-              const Element = ruta.element;
-              const allowedRoles = ruta.rol?.toString().split(',').map(x=>x.trim()) ?? [];
-              const wrapped = ruta.rol
-                ? <RequireRole allowed={allowedRoles} role={role!}><Element/></RequireRole>
-                : <Element/>;
-
-              // Si tiene hijos los registras como rutas anidadas
-              if (ruta.children) {
-                return (
-                  <Route key={ruta.path} path={ruta.path.replace(/^\//, '')} element={wrapped}>
-                    {ruta.children.map(child => {
-                      const ChildEl = child.element;
-                      const childAllowed = child.rol?.toString().split(',').map(x=>x.trim()) ?? [];
-                      const childWrapped = child.rol
-                        ? <RequireRole allowed={childAllowed } role={role!}><ChildEl/></RequireRole>
-                        : <ChildEl/>;
-                      return (
-                        <Route
-                          key={child.path}
-                          path={child.path.replace(/^\//, '')}
-                          element={childWrapped}
-                        />
-                      );
-                    })}
-                  </Route>
-                );
+            <Route
+              element={
+                <RequireAuth>
+                    <Layout />
+                </RequireAuth>
               }
+            >
 
-              // Si no tiene hijos, ruta directa
-              return (
-                <Route
-                  key={ruta.path}
-                  path={ruta.path.replace(/^\//, '')}
-                  element={wrapped}
-                />
-              );
-            })}
+              {routes.map(ruta => {
+                const Element = ruta.element;
+                const allowedRoles = ruta.rol?.toString().split(',').map(x=>x.trim()) ?? [];
+                const wrapped = ruta.rol
+                  ? <RequireRole allowed={allowedRoles} role={role!}><Element/></RequireRole>
+                  : <Element/>;
 
-          </Route>
+                // Si tiene hijos los registras como rutas anidadas
+                if (ruta.children) {
+                  return (
+                    <Route key={ruta.path} path={ruta.path.replace(/^\//, '')} element={wrapped}>
+                      {ruta.children.map(child => {
+                        const ChildEl = child.element;
+                        const childAllowed = child.rol?.toString().split(',').map(x=>x.trim()) ?? [];
+                        const childWrapped = child.rol
+                          ? <RequireRole allowed={childAllowed } role={role!}><ChildEl/></RequireRole>
+                          : <ChildEl/>;
+                        return (
+                          <Route
+                            key={child.path}
+                            path={child.path.replace(/^\//, '')}
+                            element={childWrapped}
+                          />
+                        );
+                      })}
+                    </Route>
+                  );
+                }
 
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
+                // Si no tiene hijos, ruta directa
+                return (
+                  <Route
+                    key={ruta.path}
+                    path={ruta.path.replace(/^\//, '')}
+                    element={wrapped}
+                  />
+                );
+              })}
+
+            </Route>
+
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </SucursalProvider>
       </Suspense>
     </Router>
   );
