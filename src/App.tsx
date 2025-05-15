@@ -9,6 +9,7 @@ import { routes } from './config/variables';
 import { useAuthRole } from './config/auth';
 import Spinner from './components/general/Spinner';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import { SucursalProvider } from './config/context/SucursalContext';
 
 function App() {
   const {role,loading} = useAuthRole()
@@ -25,11 +26,12 @@ function App() {
           <Route
             element={
               <RequireAuth>
-                <Layout />
+                <SucursalProvider>
+                  <Layout />
+                </SucursalProvider>
               </RequireAuth>
             }
           >
-            <Route index element={<Navigate to="inicio" replace />} />
 
             {routes.map(ruta => {
               const Element = ruta.element;

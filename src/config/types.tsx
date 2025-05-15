@@ -45,3 +45,32 @@ export interface Sucursal {
   fotoSucursal: Document[];
 
 }
+export interface Material {
+  id?: string;
+  userid: string;
+  sucursalid:string;
+  tipo: string;
+  nombre: string;
+  precio: number;
+  peso: number;
+  historico?:MaterialHistorico[]
+}
+export interface MaterialHistorico {
+  id?: string;  
+  sucursalid:string;
+  tipo: string;
+  nombre: string;
+  precio: number;
+  peso: number;
+  fecha: string;
+}
+
+export interface Cliente {
+  id: string;
+  nombreCompleto: string;
+  correoElectronico?: string;
+  celular: string;
+  empresa: string;
+  userid: string;
+  sucursalid:string
+}

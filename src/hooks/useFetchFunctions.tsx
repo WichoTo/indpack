@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { User , Sucursal,Document } from '../config/types';
+import type { User , Sucursal,Document, Material, MaterialHistorico, Cliente } from '../config/types';
 import { supabase } from '../config/supabase';
 import { normalizeFileName } from './useUtilsFunctions';
 //import { normalizeFileName } from './useUtilsFunctions';
@@ -220,7 +220,7 @@ export const useFetchSucursales = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchSucusales = async () => {
+  const fetchSucursales = async () => {
     try {
       const { data, error } = await supabase.from("sucursales").select("*");
       if (error) throw error;
@@ -233,7 +233,7 @@ export const useFetchSucursales = () => {
   };
 
   useEffect(() => {
-    fetchSucusales();
+    fetchSucursales();
   }, []);
 
   useEffect(() => {
@@ -242,7 +242,7 @@ export const useFetchSucursales = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'sucursales' },
-        () => fetchSucusales()
+        () => fetchSucursales()
       )
       .subscribe();
     return () => {
@@ -250,7 +250,7 @@ export const useFetchSucursales = () => {
     };
   }, []);
 
-  return { sucursales, loading, error, fetchSucusales };
+  return { sucursales, loading, error, fetchSucursales };
 };
 
 
@@ -295,3 +295,177 @@ export async function actualizarSucursal(
     throw err
   }
 }
+
+/////////////////////////////////////////////////MATERIALES////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+export const useFetchMateriales = () => {
+  const [materiales, setMateriales] = useState<Material[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchMateriales = async () => {
+    try {
+      const { data, error } = await supabase.from("materiales").select("*");
+      if (error) throw error;
+      setMateriales(data || []);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMateriales();
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('materiales')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'materiales' },
+        () => fetchMateriales()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  return { materiales, loading, error, fetchMateriales };
+};
+
+export async function actualizarMaterial(
+  material: Material
+): Promise<Material> {
+  if (!material.id) {
+    // Si no hay ID, es un insert nuevo: simplemente inicializa el historico vacío
+    const { data, error } = await supabase
+      .from('materiales')
+      .upsert({ ...material, historico: [] }, { onConflict: 'id' })
+      .select()
+    if (error) throw error
+    return data![0]
+  }
+
+  // 1) Recupera el histórico actual
+  const { data: current, error: fetchErr } = await supabase
+    .from('materiales')
+    .select('historico')
+    .eq('id', material.id)
+    .maybeSingle()
+  if (fetchErr) throw fetchErr
+
+  const previo: MaterialHistorico[] = current?.historico ?? []
+
+  // 2) Construye la nueva entrada de histórico con fecha
+  const nuevoRegistro: MaterialHistorico = {
+    tipo: material.tipo,
+    nombre: material.nombre,
+    precio: material.precio,
+    peso: material.peso,
+    sucursalid:material.sucursalid,
+    fecha: new Date().toISOString(),
+  }
+
+  // 3) Upsert incluyendo el historial extendido
+  const { data, error } = await supabase
+    .from('materiales')
+    .upsert(
+      {
+        ...material,
+        historico: [...previo, nuevoRegistro],
+      },
+      { onConflict: 'id' }
+    )
+    .select()
+
+  if (error) throw error
+  return data![0]
+}
+
+
+export const useFetchClientes = (sucursalid?: string) => {
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchClientes = async () => {
+    setLoading(true);
+    try {
+      let query = supabase.from('clientes').select('*');
+      if (sucursalid) {
+        query = query.eq('sucursalid', sucursalid);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      setClientes(data || []);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClientes();
+  }, [sucursalid]);
+
+  useEffect(() => {
+    if (!sucursalid) return;
+    // Creamos un canal específico para esta sucursal
+    const channel = supabase
+      .channel(`clientes_suc_${sucursalid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'clientes',
+          filter: `sucursalid=eq.${sucursalid}`,
+        },
+        () => {
+          fetchClientes();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sucursalid]);
+
+  return { clientes, loading, error, fetchClientes };
+};
+
+
+
+export const actualizarCliente = async (programa: Cliente) => {
+  const { data, error } = await supabase
+    .from('clientes')
+    .upsert([programa], { onConflict: 'id' });
+
+  if (error) {
+    console.error('Error al upsert ProgramaGeneral:', error);
+    throw error;
+  }
+
+  return data;
+};
+export const deleteCliente = async (clienteId: string) => {
+  try {
+    const { error } = await supabase
+      .from("clientes")
+      .update({ usuario: null , usuarioEmail:null}) // 🔹 Remueve la asociación del usuario con el cliente
+      .eq("id", clienteId); // 🔹 Encuentra al cliente por su ID
+
+    if (error) throw error;
+
+    console.log(`Cliente con ID ${clienteId} desvinculado correctamente.`);
+    return true;
+  } catch (err) {
+    console.error("Error al desvincular cliente:", err);
+    return false;
+  }
+};

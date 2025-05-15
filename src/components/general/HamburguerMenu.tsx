@@ -18,7 +18,7 @@ const HamburguerMenu: React.FC<HamburguerMenuProps> = ({ onToggle }) => {
     <header
       style={{
         padding: '1rem',
-        backgroundColor: 'var(--secondary-color)',
+        backgroundColor: 'var(--primary-color)',
         display: 'flex',
         alignItems: 'center',
       }}
