@@ -12,9 +12,10 @@ export const images = {
   export const listasDesplegables = {
     tiposMateriales: {
       Polines: ["P6X4", "P4X4", "P4X3", "P4X2"],
-      Tablas: ["T 7/8", "T1 1/2"],
+      Tablas: ["T7/8", "T1 1/2"],
       Duelas: ["D7", "D3", "D4", "T3", "T4"],
       Paredes: ["TRIPL5", "TRIPL6", "TRIPL9", "TRIPL12", "OSB12"],
+      Otros: ["Bolsa Antihumedad", "Termo", "DESEC", "S.GOLPE","S.POS","SEÑAL"]
     },
     tiposTacon: ["Corrido", "Pieza"],
     tiposEquipo: ["Caja","Tarima","Huacal"]
@@ -72,6 +73,14 @@ export const routes: RouteConfig[] = [
     element: React.lazy(() => import('../pages/clientes/ClientesPage')),
     hideSucursalSelector: false,
   },
+  {
+    path: 'costeos',
+    name: 'Costeos',
+    icon: BusinessIcon,
+    rol: ['Administrador','Gerente'],
+    element: React.lazy(() => import('../pages/pedidos/PedidosPage')),
+    hideSucursalSelector: false,
+  },
 ]
 
 export const routesNav: RouteConfig[] = [
@@ -115,14 +124,21 @@ export const routesNav: RouteConfig[] = [
         hideSucursalSelector: false,
       },
     ]
-  },
-  
+  },  
   {
     path: 'clientes',
     name: 'Clientes',
     icon: PeopleIcon,
     rol: ['Administrador','Gerente'],
     element: React.lazy(() => import('../pages/clientes/ClientesPage')),
+    hideSucursalSelector: false,
+  },
+  {
+    path: 'costeos',
+    name: 'Costeos',
+    icon: BusinessIcon,
+    rol: ['Administrador','Gerente'],
+    element: React.lazy(() => import('../pages/pedidos/PedidosPage')),
     hideSucursalSelector: false,
   },
 ]

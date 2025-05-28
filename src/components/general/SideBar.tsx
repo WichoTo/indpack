@@ -48,10 +48,10 @@ const Sidebar: React.FC<SidebarProps> = ({ visible, role, onClose }) => {
         onClick={e => e.stopPropagation()}
         style={{
           position: 'fixed',
-          top: '90px',    // o el alto de tu AppBar
+          top: '60px',    // o el alto de tu AppBar
           left: 0,
           width: `${drawerWidth}px`,
-          height: `calc(100vh - 90px)`,
+          height: `calc(100vh - 60px)`,
           backgroundColor: 'var(--primary-color)',
           color: '#fff',
           padding: '1rem',

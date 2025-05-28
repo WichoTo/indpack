@@ -1,3 +1,11 @@
+export const ModalStyle = {
+  width: '90vw',
+  height: '90vh',
+  margin: 0,
+  padding: 0,
+  borderRadius: 4,
+}
+
 export interface Route {
   path: string;
   name: string;
@@ -48,11 +56,23 @@ export interface Sucursal {
 export interface Material {
   id?: string;
   userid: string;
+  tipo: string;
+  nombre: string;
+  precio: number;
+  peso: number;
+  pesoMaximo: number
+  historico?:MaterialHistorico[]
+}
+export interface MaterialSuc {
+  id?: string;
+  idMaterial?: string;
+  userid: string;
   sucursalid:string;
   tipo: string;
   nombre: string;
   precio: number;
   peso: number;
+  pesoMaximo: number
   historico?:MaterialHistorico[]
 }
 export interface MaterialHistorico {
@@ -73,4 +93,214 @@ export interface Cliente {
   empresa: string;
   userid: string;
   sucursalid:string
+}
+
+
+export interface Costeo {
+  id: string;
+  folio: string;
+  userid: string;
+  clienteid: string;
+  sucursalid: string;
+  destino: string;
+  direccion: string;
+  fechaPedido: string;
+  formaEnvio?: string;
+  fechaEnvio?: string;
+  tituloPedido: string;
+  descripcion?: string;
+  estado: string;
+  fechaCreacion: string;
+  
+  productos: Producto[];
+  referenciasCosteo?:Document[];
+}
+
+
+
+export interface Producto {
+  id: string;
+  codigoEquipo: string;
+  equipo: string;
+  cantidad: number;  
+  tipoEquipo: string;
+  servicio?: string;
+  peso?: number;
+  bantihumedad?: string;
+  termo?: string;
+  
+  detalles?: Record<string, any>;
+  
+   
+  referenciasEquipo?:Document[];
+
+  largoEquipo: number;
+  anchoEquipo: number;
+  altoEquipo: number;
+
+  incrLargo: number;
+  incrAncho: number;
+  incrAlto: number;
+  grosor: number;
+
+  largoEmpaque: number;
+  anchoEmpaque: number;
+  altoEmpaque: number;
+
+  precioUnitario: number;
+  importeBolsaAntihumedad?: number;
+  importeServicio?: number;
+  importeTermo?: number;
+  importeTotal: number; 
+  cantidadDesec?: number
+  precioDesec?: number
+  importeDesec?: number
+
+  // S. Golpe
+  cantidadSGolpe?: number
+  precioSGolpe?: number
+  importeSGolpe?: number
+
+  // S. POS
+  cantidadSPOS?: number
+  precioSPOS?: number
+  importeSPOS?: number
+
+  // Señal
+  cantidadSENAL?: number
+  precioSENAL?: number
+  importeSENAL?: number
+
+  // Otros cargos
+  varios?: number
+  manoObra?: number
+  flete?: number
+  factor?: number
+  totales: Totales[];
+
+  polinesAbajo: PolinAbajo[];
+
+  tipoTacon: TipoTacon;
+
+  tacon:Tacon;
+
+  tipoCorral: TipoCorral;
+
+  corral: Corral[];
+
+  maderaExtra: MaderaExtra;
+
+  porterias: Porterias;
+
+  polinAmarre: PolinAmarre;
+
+  polinesFijacion: PolinFijacion[]
+
+  tendido: Tendido;
+
+  paredes: Paredes;
+
+  duelas: Duelas;
+}
+export interface PolinAbajo {
+    cantidad: number;
+    tipo: string;
+    medida: number;
+}
+export interface PolinFijacion {
+    cantidad: number;
+    tipo: string;
+    medida: number;
+}
+export type TipoTacon = "Corrido" | "Pieza" | "";
+export interface TaconCorrido {
+  tipoPolin: string;
+  medida: number;
+  cantidad: number;
+}
+export interface TaconPieza {
+  tipoPolin: string;
+  cantidad: number;
+}
+export type Tacon = TaconPieza | TaconCorrido;
+export type TipoCorral = "Corrido" | "Parcial Largo" | "Parcial Ancho" | "Topes" ;
+export interface CorralGeneral {
+  tipoCorral: TipoCorral;
+  tipoPolin: string;
+  medida: number;
+}
+export interface CorralTopes {
+  tipoCorral: "Topes";
+  tipoPolin: string;
+  cantidad: number;
+}
+export type Corral = CorralGeneral | CorralTopes;
+export interface MaderaExtra {
+  tipoPolin: string;
+  medida: number;
+};
+export interface Porterias  {
+  cantidad: number;
+  tipoPolin: string;
+  medida: number;
+};
+export interface PolinAmarre {
+    cantidad: number;
+    tipoPolin: string;
+    medida: number;
+}; 
+export interface PolinFijacion {
+  cantidad: number;
+  tipo: string;
+  medida: number;
+};
+export interface Tendido {
+  tipo: string;
+  cantidad: number;
+  extra: number;
+  medida: number;
+};
+export interface Paredes{
+  tipoParedes: string;
+  largo2y4: number;
+  alto2y4: number;
+  largo1y3: number;
+  alto1y3: number;
+  largoTecho: number;
+  altoTecho: number;
+
+  tipoMarco?: string;
+};
+export interface Duelas{
+  tipoDuela: string;
+  postes: {
+    cantidad: number;
+    medida: number;
+  }[];
+  largueros: {
+    cantidad: number;
+    medida: number;
+  }[];
+  duelate?: {
+    postes: {
+      cantidad: number;
+      medida: number;
+    };
+    largueros: {
+      cantidad: number;
+      medida: number;
+    };
+  };
+}
+
+
+
+
+
+export interface Totales {
+  tipo: string;
+  cantidad: number;
+  medida: number;
+  precioTotal: number;
+  pesoTotal: number;
 }

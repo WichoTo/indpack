@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { User , Sucursal,Document, Material, MaterialHistorico, Cliente } from '../config/types';
+import type { User , Sucursal,Document, Material, MaterialHistorico, Cliente, Costeo, MaterialSuc } from '../config/types';
 import { supabase } from '../config/supabase';
 import { normalizeFileName } from './useUtilsFunctions';
 //import { normalizeFileName } from './useUtilsFunctions';
@@ -297,145 +297,177 @@ export async function actualizarSucursal(
 }
 
 /////////////////////////////////////////////////MATERIALES////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-export const useFetchMateriales = (sucursalid?: string) => {
-  const [materiales, setMateriales] = useState<Material[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+export const useFetchMaterialesMaster = () => {
+  const [materiales, setMateriales] = useState<Material[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const fetchMateriales = async () => {
-    setLoading(true);
+  const fetchMaster = async () => {
+    setLoading(true)
     try {
-      let query = supabase.from('materiales').select('*');
-      if (sucursalid) {
-        query = query.eq('sucursalid', sucursalid);
-      }
-      const { data, error } = await query;
-      if (error) throw error;
-      setMateriales(data || []);
+      const { data, error } = await supabase
+        .from('materiales')
+        .select('*')
+      if (error) throw error
+      setMateriales(data ?? [])
     } catch (err) {
-      setError((err as Error).message);
+      setError((err as Error).message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
-
-  useEffect(() => {
-    fetchMateriales();
-  }, [sucursalid]);
-
-  useEffect(() => {
-    if (!sucursalid) return;
-    const channel = supabase
-      .channel(`materiales_suc_${sucursalid}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'materiales',
-          filter: `sucursalid=eq.${sucursalid}`,
-        },
-        () => {
-          fetchMateriales();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [sucursalid]);
-
-  return { materiales, loading, error, fetchMateriales };
-};
-export const useFetchMaterialesGeneral = () => {
-  const [materiales, setMateriales] = useState<Material[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchMateriales = async () => {
-    try {
-      const { data, error } = await supabase.from("materiales").select("*");
-      if (error) throw error;
-      setMateriales(data || []);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchMateriales();
-  }, []);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel('materiales')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'materiales' },
-        () => fetchMateriales()
-      )
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  return { materiales, loading, error, fetchMateriales };
-};
-
-export async function actualizarMaterial(
-  material: Material
-): Promise<Material> {
-  if (!material.id) {
-    // Si no hay ID, es un insert nuevo: simplemente inicializa el historico vacío
-    const { data, error } = await supabase
-      .from('materiales')
-      .upsert({ ...material, historico: [] }, { onConflict: 'id' })
-      .select()
-    if (error) throw error
-    return data![0]
   }
 
-  // 1) Recupera el histórico actual
-  const { data: current, error: fetchErr } = await supabase
+  useEffect(() => {
+    fetchMaster()
+    const channel = supabase
+      .channel('master_materiales')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'materiales' }, fetchMaster)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  return { materiales, loading, error, fetchMaster }
+}
+
+/**
+ * Fetch branch-specific materials (tabla "materialesSuc").
+ */
+export const useFetchMaterialesSuc = (sucursalid?: string) => {
+  const [materiales, setMateriales] = useState<MaterialSuc[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchSuc = async () => {
+    setLoading(true)
+    try {
+      let query = supabase.from('materialesSuc').select('*')
+      if (sucursalid) query = query.eq('sucursalid', sucursalid)
+      const { data, error } = await query
+      if (error) throw error
+      setMateriales(data ?? [])
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchSuc()
+  }, [sucursalid])
+
+  useEffect(() => {
+    if (!sucursalid) return
+    const channel = supabase
+      .channel(`materialesSuc_${sucursalid}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'materialesSuc', filter: `sucursalid=eq.${sucursalid}` }, fetchSuc)
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [sucursalid])
+
+  return { materiales, loading, error, fetchSuc }
+}
+
+/**
+ * Upsert a branch-specific material with history
+ */
+export async function actualizarMaterial(
+  data: MaterialSuc
+): Promise<MaterialSuc> {
+  // --- 1) MASTER UPSERT: 'materiales' table ---
+
+  // 1.1) Leer el historial existente
+  const { data: masterCurrent, error: masterFetchErr } = await supabase
     .from('materiales')
     .select('historico')
-    .eq('id', material.id)
+    .eq('id', data.idMaterial)
     .maybeSingle()
-  if (fetchErr) throw fetchErr
+  if (masterFetchErr) throw masterFetchErr
 
-  const previo: MaterialHistorico[] = current?.historico ?? []
+  const masterPrev: MaterialHistorico[] = masterCurrent?.historico ?? []
 
-  // 2) Construye la nueva entrada de histórico con fecha
-  const nuevoRegistro: MaterialHistorico = {
-    tipo: material.tipo,
-    nombre: material.nombre,
-    precio: material.precio,
-    peso: material.peso,
-    sucursalid:material.sucursalid,
-    fecha: new Date().toISOString(),
+  // 1.2) Crear nueva entrada de historial
+  const masterEntry: MaterialHistorico = {
+    sucursalid: data.sucursalid,
+    tipo:        data.tipo,
+    nombre:      data.nombre,
+    precio:      data.precio,
+    peso:        data.peso,
+    fecha:       new Date().toISOString(),
   }
 
-  // 3) Upsert incluyendo el historial extendido
-  const { data, error } = await supabase
-    .from('materiales')
-    .upsert(
-      {
-        ...material,
-        historico: [...previo, nuevoRegistro],
-      },
-      { onConflict: 'id' }
-    )
-    .select()
+  // 1.3) Preparar payload y hacer upsert
+  const masterPayload: Partial<Material> = {
+    id:         data.idMaterial,
+    userid:     data.userid,
+    tipo:       data.tipo,
+    nombre:     data.nombre,
+    precio:     data.precio,
+    peso:       data.peso,
+    pesoMaximo: data.pesoMaximo,
+    historico:  [...masterPrev, masterEntry],
+  }
 
-  if (error) throw error
-  return data![0]
+  const { data: masterResult, error: masterUpsertErr } = await supabase
+    .from('materiales')
+    .upsert(masterPayload, { onConflict: 'id' })
+    .select()
+  if (masterUpsertErr) throw masterUpsertErr
+
+  const updatedMaster = masterResult![0]
+
+  // --- 2) BRANCH UPSERT: 'materialesSuc' table ---
+
+  // 2.1) Leer historial de sucursal sólo si ya existía
+  let sucPrev: MaterialHistorico[] = []
+  if (data.id) {
+    const { data: sucCurrent, error: sucFetchErr } = await supabase
+      .from('materialesSuc')
+      .select('historico')
+      .eq('id', data.id)
+      .maybeSingle()
+    if (sucFetchErr) throw sucFetchErr
+    sucPrev = sucCurrent?.historico ?? []
+  }
+
+  // 2.2) Nueva entrada de historial para sucursal
+  const sucEntry: MaterialHistorico = {
+    sucursalid: data.sucursalid,
+    tipo:       data.tipo,
+    nombre:     data.nombre,
+    precio:     data.precio,
+    peso:       data.peso,
+    fecha:      new Date().toISOString(),
+  }
+
+  // 2.3) Generar un nuevo id si es creación
+  const branchId = data.id ?? crypto.randomUUID()
+
+  // 2.4) Preparar payload y hacer upsert
+  const branchPayload: MaterialSuc = {
+    id:         branchId,
+    idMaterial: updatedMaster.id,
+    userid:     data.userid,
+    sucursalid: data.sucursalid,
+    tipo:       data.tipo,
+    nombre:     data.nombre,
+    precio:     data.precio,
+    peso:       data.peso,
+    pesoMaximo: data.pesoMaximo,
+    historico:  [...sucPrev, sucEntry],
+  }
+
+  const { data: sucResult, error: sucUpsertErr } = await supabase
+    .from('materialesSuc')
+    .upsert(branchPayload, { onConflict: 'id' })
+    .select()
+  if (sucUpsertErr) throw sucUpsertErr
+
+  return sucResult![0]
 }
 
 
+/////////////////////////////////////////////////////CLIENTES//////////////////////////////////////////////////////
 export const useFetchClientes = (sucursalid?: string) => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -519,3 +551,156 @@ export const deleteCliente = async (clienteId: string) => {
     return false;
   }
 };
+
+/////////////////////////////////////////////////COSTEOS////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+export const useFetchCosteos = (sucursalid?: string) => {
+  const [costeos, setCosteos] = useState<Costeo[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCosteos = async () => {
+    setLoading(true);
+    try {
+      let query = supabase.from('costeo').select('*');
+      if (sucursalid) {
+        query = query.eq('sucursalid', sucursalid);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      setCosteos(data || []);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCosteos();
+  }, [sucursalid]);
+
+  useEffect(() => {
+    if (!sucursalid) return;
+    const channel = supabase
+      .channel(`costeo_suc_${sucursalid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'costeo',
+          filter: `sucursalid=eq.${sucursalid}`,
+        },
+        () => {
+          fetchCosteos();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sucursalid]);
+
+  return { costeos, loading, error, fetchCosteos };
+};
+export const useFetchCosteosGeneral = () => {
+  const [costeos, setCosteos] = useState<Costeo[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCosteos = async () => {
+    try {
+      const { data, error } = await supabase.from("costeo").select("*");
+      if (error) throw error;
+      setCosteos(data || []);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCosteos();
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('costeo')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'costeo' },
+        () => fetchCosteos()
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  return { costeos, loading, error, fetchCosteos };
+};
+
+export async function actualizarCosteo(
+  costeo: Costeo
+): Promise<Costeo> {
+  const storage = supabase.storage.from('costeos')
+  const uploadedPaths: string[] = []
+
+  // Sube un documento, o lo devuelve si ya existe (no tiene .file)
+  async function uploadDoc(doc: Document): Promise<Document> {
+    if (!doc.file) {
+      // ya era un documento existente en el bucket
+      return doc
+    }
+    const safeName = normalizeFileName(doc.file.name)
+    const path = `${costeo.id}/${safeName}`
+
+    // elimina la versión anterior (si la hay) y sube la nueva
+    await storage.remove([path]).catch(() => {})
+    const { error: uploadError } = await storage.upload(path, doc.file, {
+      upsert: true,
+    })
+    if (uploadError) throw uploadError
+
+    uploadedPaths.push(path)
+    return {
+      id: path,
+      nombre: doc.file.name,
+      url: path,
+      path,
+      bucket: 'costeos',
+    }
+  }
+
+  // 1) Procesamos referenciasCosteo
+  const refs = costeo.referenciasCosteo ?? []
+  const referenciasProcesadas = await Promise.all(refs.map(uploadDoc))
+
+  // 2) Armamos el payload con las referencias ya subidas
+  const payload: Costeo = {
+    ...costeo,
+    referenciasCosteo: referenciasProcesadas,
+  }
+
+  try {
+    // 3) Upsert en Supabase (conflicto por id)
+    const { data, error } = await supabase
+      .from('costeo')
+      .upsert(payload, { onConflict: 'id' })
+      .select()
+    if (error) throw error
+
+    // devolvemos la fila resultante
+    return data![0]
+  } catch (err) {
+    // En caso de fallo, limpiamos los archivos recién subidos
+    if (uploadedPaths.length) {
+      await storage.remove(uploadedPaths).catch(() => {})
+    }
+    throw err
+  }
+}
+
+
