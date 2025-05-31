@@ -169,7 +169,7 @@ const DuelasRow: React.FC<Props> = ({
               size="small"
               margin="dense"
                 fullWidth
-                label="Cant Postes"
+                label="Cant Largueros"
                 value={producto?.duelas?.postes?.[1]?.cantidad ?? 0}
                 onChange={(e) => {
                   handleDuelasChange(producto?.id ?? "", "postes", "cantidad", 1, Number(e.target.value), setCosteo);
@@ -182,7 +182,7 @@ const DuelasRow: React.FC<Props> = ({
               size="small"
               margin="dense"
                 fullWidth
-                label="Medidas Postes"
+                label="Medidas Largueros"
                 value={producto?.duelas?.postes?.[1]?.medida ?? 0}
                 onChange={(e) => {
                   handleDuelasChange(producto?.id ?? "", "postes", "medida", 1, Number(e.target.value), setCosteo);
@@ -195,7 +195,7 @@ const DuelasRow: React.FC<Props> = ({
               size="small"
               margin="dense"
                 fullWidth
-                label="Cant Largueros"
+                label="Cant Postes"
                 value={producto?.duelas?.largueros?.[1]?.cantidad ?? 0}
                 onChange={(e) => {
                   handleDuelasChange(producto?.id ?? "", "largueros", "cantidad", 1, Number(e.target.value), setCosteo);
@@ -208,7 +208,7 @@ const DuelasRow: React.FC<Props> = ({
               size="small"
               margin="dense"
                 fullWidth
-                label="Medidas Largueros"
+                label="Medidas Postes"
                 value={producto?.duelas?.largueros?.[1]?.medida ?? 0}
                 onChange={(e) => {
                   handleDuelasChange(producto?.id ?? "", "largueros", "medida", 1, Number(e.target.value), setCosteo);

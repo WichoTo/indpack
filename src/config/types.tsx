@@ -122,17 +122,14 @@ export interface Producto {
   id: string;
   codigoEquipo: string;
   equipo: string;
-  cantidad: number;  
+  cantidad: number;
   tipoEquipo: string;
   servicio?: string;
   peso?: number;
   bantihumedad?: string;
   termo?: string;
-  
   detalles?: Record<string, any>;
-  
-   
-  referenciasEquipo?:Document[];
+  referenciasEquipo?: Document[];
 
   largoEquipo: number;
   anchoEquipo: number;
@@ -148,60 +145,59 @@ export interface Producto {
   altoEmpaque: number;
 
   precioUnitario: number;
+
+  cantidadDesec?: number;
+  precioDesec?: number;
+  importeDesec?: number;
+
+  cantidadSGolpe?: number;
+  precioSGolpe?: number;
+  importeSGolpe?: number;
+
+  cantidadSPOS?: number;
+  precioSPOS?: number;
+  importeSPOS?: number;
+
+  cantidadSENAL?: number;
+  precioSENAL?: number;
+  importeSENAL?: number;
+
   importeBolsaAntihumedad?: number;
-  importeServicio?: number;
   importeTermo?: number;
-  importeTotal: number; 
-  cantidadDesec?: number
-  precioDesec?: number
-  importeDesec?: number
 
-  // S. Golpe
-  cantidadSGolpe?: number
-  precioSGolpe?: number
-  importeSGolpe?: number
+  importeMaterialDirecto?: number;
+  importeMaterialinDirecto?: number;
 
-  // S. POS
-  cantidadSPOS?: number
-  precioSPOS?: number
-  importeSPOS?: number
+  variosPercent?: number;
+  manoObraPercent?: number;
+  fletePercent?: number;
 
-  // Señal
-  cantidadSENAL?: number
-  precioSENAL?: number
-  importeSENAL?: number
+  varios?: number;
+  manoObra?: number;
+  flete?: number;
+  extras?: number;
 
-  // Otros cargos
-  varios?: number
-  manoObra?: number
-  flete?: number
-  factor?: number
+  factor?: number;
+
+  importeTotal: number;
+
   totales: Totales[];
 
   polinesAbajo: PolinAbajo[];
-
   tipoTacon: TipoTacon;
-
-  tacon:Tacon;
-
+  tacon: Tacon;
   tipoCorral: TipoCorral;
-
   corral: Corral[];
-
   maderaExtra: MaderaExtra;
-
   porterias: Porterias;
-
   polinAmarre: PolinAmarre;
-
-  polinesFijacion: PolinFijacion[]
-
+  polinesFijacion: PolinFijacion[];
   tendido: Tendido;
-
   paredes: Paredes;
-
   duelas: Duelas;
 }
+
+
 export interface PolinAbajo {
     cantidad: number;
     tipo: string;

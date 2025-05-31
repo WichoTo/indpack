@@ -14,7 +14,7 @@ import {
 } from '@mui/material'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import { Costeo } from '../../config/types'
-import { actualizarCosteo, useFetchCosteos } from '../../hooks/useFetchFunctions'
+import { actualizarCosteo, useFetchClientes, useFetchCosteos } from '../../hooks/useFetchFunctions'
 import { useAuthRole } from '../../config/auth'
 import Spinner from '../../components/general/Spinner'
 import { useSucursal } from '../../config/context/SucursalContext'
@@ -24,7 +24,8 @@ import { fechaActual } from '../../hooks/useDateUtils'
 const PedidosPage: React.FC = () => {
   const { user } = useAuthRole()
   const { selectedSucursal } = useSucursal()
-  const { costeos } = useFetchCosteos(selectedSucursal?.id ?? "")
+  const { costeos } = useFetchCosteos(selectedSucursal?.id ?? '')
+  const { clientes } = useFetchClientes()
   const sucursalid = selectedSucursal?.id ?? ""
   
   const userid = user?.id ?? ""
@@ -101,25 +102,39 @@ const PedidosPage: React.FC = () => {
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
-              <TableRow sx={{backgroundColor:"var(--primary-color)"}}>
-                <TableCell sx={{color:"white"}}>Costeo</TableCell>
-                <TableCell sx={{color:"white"}}>Acciones</TableCell>
+              <TableRow sx={{ backgroundColor: 'var(--primary-color)' }}>
+                <TableCell sx={{ color: 'white' }}>Folio</TableCell>
+                <TableCell sx={{ color: 'white' }}>Cliente</TableCell>
+                <TableCell sx={{ color: 'white' }}>Empresa</TableCell>
+                <TableCell sx={{ color: 'white' }}>Dirección</TableCell>
+                <TableCell sx={{ color: 'white' }}>Fecha Envío</TableCell>
+                <TableCell sx={{ color: 'white' }}>Estatus</TableCell>
+                <TableCell sx={{ color: 'white' }}>Acciones</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {costeos.map(c => (
-                <TableRow key={c.id} hover>
-                  <TableCell>{c.id}</TableCell>
-                  <TableCell align="center">
-                    <IconButton onClick={() => handleEdit(c)}>
-                      <VisibilityIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {costeos.map(c => {
+                const cli = clientes.find(x => x.id === c.clienteid)
+                return (
+                  <TableRow key={c.id} hover>
+                    <TableCell>{c.folio}</TableCell>
+                    <TableCell>{cli?.nombreCompleto || '–'}</TableCell>
+                    <TableCell>{cli?.empresa || '–'}</TableCell>
+                    <TableCell>{c.direccion}</TableCell>
+                    <TableCell>{c.fechaEnvio || '–'}</TableCell>
+                    <TableCell>{c.estado || '–'}</TableCell>
+                    <TableCell align="center">
+                      <IconButton onClick={() => handleEdit(c)}>
+                        <VisibilityIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </TableContainer>
+
 
         <CosteoModal
           onClose={handleClose}

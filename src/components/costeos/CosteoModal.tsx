@@ -72,6 +72,7 @@ const CosteoModal: React.FC<CosteoModalProps> = ({ open, onClose,sucursalid,cost
         ).length
 
         const base = `${prefijo}${contador + 1}`
+        setCosteo(prev => ({ ...prev, folio: `${base}-${selectedCliente?.empresa}`  }))
         return  `${base}-${selectedCliente?.empresa}` 
         }
 const handleClose = () => {

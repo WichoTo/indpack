@@ -151,31 +151,40 @@ export const handleCalcularTotales = (
       precioTotalMateriales += medidaTotal * precioMaterial
     }
 
-    // Polines abajo
+    // --- aquí tu lógica existente para polinesAbajo, tacon, corral, etc. ---
     producto.polinesAbajo?.forEach(pol =>
       agregarAMedidaTotal(pol.tipo, pol.cantidad, pol.medida)
     )
-    // Tacón
     if (producto.tipoTacon === 'Corrido') {
       const t = producto.tacon as any
       agregarAMedidaTotal(t.tipoPolin, Number(t.cantidad) || 0, Number(t.medida) || 0)
     } else if (producto.tipoTacon === 'Pieza') {
       const t = producto.tacon as any
-      agregarAMedidaTotal(t.tipoPolin, Number(t.cantidad) || 0, .3, false)
+      agregarAMedidaTotal(t.tipoPolin, Number(t.cantidad) || 0, 0.3, false)
     }
-    // Corral
     if (producto.corral?.length) {
       const c = producto.corral[0]
       const medidaFinal = c.tipoCorral === 'Topes' ? 25 : c.medida
       agregarAMedidaTotal(c.tipoPolin, 1, medidaFinal)
     }
-    // Porterías, madera extra, polinAmarre, fijaciones, tendido
     if (producto.porterias)
-      agregarAMedidaTotal(producto.porterias.tipoPolin, producto.porterias.cantidad, producto.porterias.medida)
+      agregarAMedidaTotal(
+        producto.porterias.tipoPolin,
+        producto.porterias.cantidad,
+        producto.porterias.medida
+      )
     if (producto.maderaExtra?.tipoPolin)
-      agregarAMedidaTotal(producto.maderaExtra.tipoPolin, 1, producto.maderaExtra.medida)
+      agregarAMedidaTotal(
+        producto.maderaExtra.tipoPolin,
+        1,
+        producto.maderaExtra.medida
+      )
     if (producto.polinAmarre)
-      agregarAMedidaTotal(producto.polinAmarre.tipoPolin, producto.polinAmarre.cantidad, producto.polinAmarre.medida)
+      agregarAMedidaTotal(
+        producto.polinAmarre.tipoPolin,
+        producto.polinAmarre.cantidad,
+        producto.polinAmarre.medida
+      )
     producto.polinesFijacion?.forEach(pol =>
       agregarAMedidaTotal(pol.tipo, pol.cantidad, pol.medida)
     )
@@ -185,18 +194,20 @@ export const handleCalcularTotales = (
         producto.tendido.cantidad,
         producto.tendido.medida + producto.tendido.extra
       )
-    // Duelas
     if (producto.duelas) {
       const tipoDuela = producto.duelas.tipoDuela || 'Duela'
-      producto.duelas.postes.forEach(ps => agregarAMedidaTotal(tipoDuela, ps.cantidad, ps.medida))
-      producto.duelas.largueros.forEach(lg => agregarAMedidaTotal(tipoDuela, lg.cantidad, lg.medida))
+      producto.duelas.postes.forEach(ps =>
+        agregarAMedidaTotal(tipoDuela, ps.cantidad, ps.medida)
+      )
+      producto.duelas.largueros.forEach(lg =>
+        agregarAMedidaTotal(tipoDuela, lg.cantidad, lg.medida)
+      )
       if (producto.duelas.duelate) {
         const d = producto.duelas.duelate
         agregarAMedidaTotal(tipoDuela, d.postes.cantidad, d.postes.medida)
         agregarAMedidaTotal(tipoDuela, d.largueros.cantidad, d.largueros.medida)
       }
     }
-    // Paredes
     if (producto.paredes.tipoParedes) {
       const hojas = calcularHojasNecesarias(
         producto.paredes.largo1y3 || 0,
@@ -206,11 +217,16 @@ export const handleCalcularTotales = (
         producto.paredes.largoTecho || 0,
         producto.paredes.altoTecho || 0,
       )
-      agregarAMedidaTotal(producto.paredes.tipoParedes, 1, hojas, false)
+      agregarAMedidaTotal(
+        producto.paredes.tipoParedes,
+        1,
+        hojas,
+        false
+      )
     }
 
     // 2) Convertir agrupados a array para UI
-    const resumen = Object.entries(agrupados).map(([_, d]) => ({
+    const resumen = Object.values(agrupados).map(d => ({
       tipo: d.tipo,
       cantidad: 0,
       medida: d.medidaTotal,
@@ -219,51 +235,49 @@ export const handleCalcularTotales = (
     }))
 
     // 3) Sumar importes adicionales
-    const impServ  = Number(producto.importeServicio   || 0)
-    const impBolsa = Number(producto.importeBolsaAntihumedad || 0)
-    const impTermo = Number(producto.importeTermo      || 0)
-    const impDesec = Number(producto.importeDesec      || 0)
-    const impSG    = Number(producto.importeSGolpe     || 0)
-    const impSPOS  = Number(producto.importeSPOS       || 0)
-    const impSenal = Number(producto.importeSENAL      || 0)
+    const impBolsa  = Number(producto.importeBolsaAntihumedad ?? 0)
+    const impTermo  = Number(producto.importeTermo           ?? 0)
+    const impDesec  = Number(producto.importeDesec           ?? 0)
+    const impSG     = Number(producto.importeSGolpe          ?? 0)
+    const impSPOS   = Number(producto.importeSPOS            ?? 0)
+    const impSenal  = Number(producto.importeSENAL           ?? 0)
+    const sumaExtras = impBolsa + impTermo + impDesec + impSG + impSPOS + impSenal
 
-    const sumaExtras = impServ + impBolsa + impTermo + impDesec + impSG + impSPOS + impSenal
-console.log(sumaExtras)
-    // 4) Calcular precioUnitario
-    
-    const precioUnitario = precioTotalMateriales + sumaExtras
-console.log(precioUnitario)
-    // 5) Calcular varios, manoObra y flete
-    const varios   = precioUnitario * 0.15
-    const manoObra = precioUnitario * 0.5
-    const flete    = precioUnitario * 0.15
+    // 4) Calcular importeMaterialDirecto (materiales + extras)
+    const importeMaterialDirecto = precioTotalMateriales + sumaExtras
+
+    // 5) Calcular varios, manoObra y flete sobre importeMaterialDirecto
+    const varios   = importeMaterialDirecto * 0.15
+    const manoObra = importeMaterialDirecto * 0.5
+    const flete    = importeMaterialDirecto * 0.15
 
     // 6) Aplicar factor
     const factor = Number(producto.factor) || 1.4
 
     // 7) Importe total final
-    const importeTotal = (precioUnitario + varios + manoObra + flete) * factor
+    const importeTotal = (importeMaterialDirecto + varios + manoObra + flete) * factor
 
-    // 8) Devolver estado actualizado
+    // 8) Devolver estado actualizado con importeMaterialDirecto incluido
     return {
       ...prev,
       productos: prev.productos.map(p =>
         p.id === productoID
           ? {
               ...p,
-              precioUnitario,
+              importeMaterialDirecto,
               totales: resumen,
-              importeTotal,
               varios,
               manoObra,
               flete,
               factor,
+              importeTotal,
             }
           : p
       ),
     }
   })
 }
+
 
 
 export const handleCalcularTotales2 = (
@@ -380,7 +394,6 @@ export const handleCalcularTotales2 = (
     // 🔹 Calcular el importe total del producto
     const importeTotal =
   (precioTotalMateriales +
-    (isNaN(parseFloat((producto.importeServicio ?? 0).toString())) ? 0 : parseFloat((producto.importeServicio ?? 0).toString())) +
     (isNaN(parseFloat((producto.importeTermo ?? 0).toString())) ? 0 : parseFloat((producto.importeTermo ?? 0).toString())) +
     (isNaN(parseFloat((producto.importeBolsaAntihumedad ?? 0).toString())) ? 0 : parseFloat((producto.importeBolsaAntihumedad ?? 0).toString()))) *
   producto.cantidad;
@@ -568,15 +581,15 @@ export const calcularDuelas = (
           // 🔹 Largueros
           largueros: [
             { cantidad: calcularCantidadLargueros(producto.anchoEmpaque), medida: producto.anchoEmpaque },
-            { cantidad: calcularCantidadLargueros(producto.altoEmpaque), medida: producto.altoEmpaque + 9 },
+            { cantidad: calcularCantidadLargueros(producto.altoEmpaque + 9), medida: producto.altoEmpaque + 9 },
           ],
 
           // 🔹 Duelate
           duelate: {
-            postes: { cantidad: 2, medida: producto.largoEmpaque },
+            postes: { cantidad: 2, medida: producto.anchoEmpaque + 2 * producto.grosor },
             largueros: {
               cantidad: calcularCantidadLargueros(producto.altoEmpaque) / 2,
-              medida: producto.anchoEmpaque + 2 * producto.grosor,
+              medida: producto.largoEmpaque,
             },
           },
         };
@@ -823,31 +836,27 @@ export function handleImporteChange(
   materiales: MaterialSuc[],
   producto: Producto
 ) {
-  const { name, value } = e.target
-  const parsed = parseFloat(value) || 0
+  const { name, value } = e.target;
+  const parsed = parseFloat(value) || 0;
 
   setCosteo(prev => ({
     ...prev,
     productos: prev.productos.map(p => {
-      if (p.id !== producto.id) return p
+      if (p.id !== producto.id) return p;
 
-      // Actualiza el campo correspondiente (cantidadDesec, precioDesec, etc.)
-      const updated: Producto = { 
-        ...p,
-        [name]: parsed 
-      } as any
+      // Aplicar el cambio en el campo correspondiente
+      const updated: Producto = { ...p, [name]: parsed } as any;
 
-      // Si es DESEC, recalcula importeDesec:
+      // 1) Recalcula importes de sub‐materiales
       if (name === 'cantidadDesec' || name === 'precioDesec') {
-        const cantidad = updated.cantidadDesec ?? 0
-        // Si el usuario no ha tecleado precioDesec, usamos el default de la sucursal
-        const precio  = updated.precioDesec ?? getPrecioExtra('DESEC.', materiales)
-        updated.importeDesec = cantidad * precio
+        const cant = updated.cantidadDesec ?? 0;
+        const prec = updated.precioDesec ?? getPrecioExtra('DESEC.', materiales);
+        updated.importeDesec = cant * prec;
       }
-       if (name === 'cantidadSGolpe' || name === 'precioSGolpe') {
-        const cantG = updated.cantidadSGolpe ?? 0;
-        const precG = updated.precioSGolpe ?? getPrecioExtra('S. GOLPE', materiales);
-        updated.importeSGolpe = cantG * precG;
+      if (name === 'cantidadSGolpe' || name === 'precioSGolpe') {
+        const cant = updated.cantidadSGolpe ?? 0;
+        const prec = updated.precioSGolpe ?? getPrecioExtra('S. GOLPE', materiales);
+        updated.importeSGolpe = cant * prec;
       }
       if (name === 'cantidadSPOS' || name === 'precioSPOS') {
         const cant = updated.cantidadSPOS ?? 0;
@@ -856,24 +865,36 @@ export function handleImporteChange(
       }
       if (name === 'cantidadSENAL' || name === 'precioSENAL') {
         const cant = updated.cantidadSENAL ?? 0;
-        // “SEÑAL” debe coincidir con el nombre en tu tabla de materialesSuc:
         const prec = updated.precioSENAL ?? getPrecioExtra('SEÑAL', materiales);
         updated.importeSENAL = cant * prec;
       }
-      if (['varios','manoObra','flete','precioUnitario','factor'].includes(name)) {
-        const base =
-          updated.precioUnitario +
-          (updated.varios  ?? 0) +
-          (updated.manoObra ?? 0) +
-          (updated.flete   ?? 0)
-        updated.importeTotal = base * (updated.factor ?? 1)
-      }
-      // Aquí podrías añadir lógicas similares para S.GOLPE, S.POS, SEÑAL, etc.
-  //handleCalcularTotales(producto.id, setCosteo, materiales);
-      return updated
+
+      // 2) Recalcula importeMaterialDirecto (precioUnitario + sub‐materiales)
+      const impDirecto =
+        (updated.precioUnitario ?? 0) +
+        (updated.importeDesec ?? 0) +
+        (updated.importeSGolpe ?? 0) +
+        (updated.importeSPOS ?? 0) +
+        (updated.importeSENAL ?? 0);
+      updated.importeMaterialDirecto = impDirecto;
+
+      // 3) Calcula importeMaterialinDirecto = varios + manoObra + flete + extras
+      const impIndirecto =
+        (updated.varios ?? 0) +
+        (updated.manoObra ?? 0) +
+        (updated.flete ?? 0) +
+        (updated.extras ?? 0);
+      updated.importeMaterialinDirecto = impIndirecto;
+
+      // 4) Recalcula importeTotal = (directo + indirecto) * factor
+      const base = impDirecto + impIndirecto;
+      updated.importeTotal = base * (updated.factor ?? 1);
+
+      return updated;
     })
-  }))
+  }));
 }
+
 
 
 export const getPrecioExtra = (nombre: string,materiales:MaterialSuc[]): number =>

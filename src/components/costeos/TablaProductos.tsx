@@ -170,11 +170,10 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
   const montoTotal = useMemo(() => {
     return costeo.productos.reduce((total, producto) => {
       const precioUnitario = producto.precioUnitario || 0;
-      const importeServicio = producto.importeServicio || 0;
       const importeBolsaAntihumedad = producto.importeBolsaAntihumedad || 0;
       const cantidad = producto.cantidad || 0;
       
-      return total + (precioUnitario + importeServicio+importeBolsaAntihumedad) * cantidad;
+      return total + (precioUnitario + importeBolsaAntihumedad) * cantidad;
     }, 0);
   }, [costeo.productos]);
   
@@ -277,7 +276,6 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
               <TableCell sx={{ color: "white", fontWeight: "bold" }}>TERMO</TableCell>
               <TableCell sx={{ color: "white", fontWeight: "bold" }}>P. UNIT.</TableCell>
               {mostrarBolsa && <TableCell sx={{ color: "white", fontWeight: "bold" }}>IMPORTE B.ANTIHUMEDAD</TableCell>}
-              {mostrarServicio && <TableCell sx={{ color: "white", fontWeight: "bold" }}>IMPORTE SERVICIO</TableCell>}
               {mostrarTermo && <TableCell sx={{ color: "white", fontWeight: "bold" }}>IMPORTE TERMO</TableCell>}
               <TableCell sx={{ color: "white", fontWeight: "bold" }}>IMPORTE TOTAL</TableCell>
               <TableCell sx={{ color: "white", fontWeight: "bold" }}>MAS INFO</TableCell>
@@ -458,9 +456,6 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
                 <TableCell padding="none" sx={{ px: 1, py: 0.5, color: 'var(--primary-color)', fontWeight: 'bold' }}>{formatoMoneda(String(producto.importeBolsaAntihumedad ?? 0))}</TableCell>
               )}
 
-              {mostrarServicio && (
-                <TableCell padding="none" sx={{ px: 1, py: 0.5, color: 'var(--primary-color)', fontWeight: 'bold' }}>{formatoMoneda(String(producto.importeServicio ?? 0))}</TableCell>
-              )}
 
               {mostrarTermo && (
                 <TableCell padding="none" sx={{ px: 1, py: 0.5, color: 'var(--primary-color)', fontWeight: 'bold' }}>{formatoMoneda(String(producto.importeTermo))}</TableCell>
