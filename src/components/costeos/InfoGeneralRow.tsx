@@ -9,17 +9,17 @@ import {
 import {
   Costeo,
   Producto,
-  Material,
   Document,
+  MaterialSuc,
 } from '../../config/types';
-import { actualizarCodigoEnPedido, handleProductoChange } from '../../hooks/useFetchCosteo';
+import { actualizarCodigoEnPedido, handleImporteChange, handleProductoChange } from '../../hooks/useFetchCosteo';
 import DocumentUploadList from '../general/DocumentUploadList';
 
 interface Props {
   producto: Producto;
   costeo: Costeo;
   setCosteo: React.Dispatch<React.SetStateAction<Costeo>>;
-  materiales:Material[]
+  materiales:MaterialSuc[]
   handleDelete: (doc: Document) => Promise<void>
   handleUpload: (files: FileList) => Promise<void>
   
@@ -84,7 +84,20 @@ const InfoGeneralRow: React.FC<Props> = ({
             size="small"
             name="servicio"
             value={producto.servicio || ""}
-            onChange={(event) => handleProductoChange(event.target.value,"servicio", setCosteo, producto?.id ?? "",materiales)}
+            onChange={(event) => {
+                const nuevaBand = event.target.value as string;
+                handleProductoChange(nuevaBand, "servicio", setCosteo, producto?.id ?? "", materiales);
+                // Si servicio !== "Si", forzamos importeServicio = 0:
+                if (nuevaBand !== "Si") {
+                const fakeEvent = {
+                    target: {
+                    name: "importeServicio",
+                    value: "0",
+                    },
+                } as React.ChangeEvent<HTMLInputElement>;
+                handleImporteChange(fakeEvent, setCosteo, materiales, producto);
+                }
+            }}
             displayEmpty
             fullWidth
             >
@@ -99,7 +112,20 @@ const InfoGeneralRow: React.FC<Props> = ({
             size="small"
             name="bantihumedad"
             value={producto.bantihumedad || ""}
-            onChange={(event) => handleProductoChange(event.target.value,"bantihumedad", setCosteo, producto?.id ?? "",materiales)}
+            onChange={(event) => {
+                const nuevaBand = event.target.value as string;
+                handleProductoChange(nuevaBand, "bantihumedad", setCosteo, producto?.id ?? "", materiales);
+                // Si servicio !== "Si", forzamos importeServicio = 0:
+                if (nuevaBand !== "Si") {
+                const fakeEvent = {
+                    target: {
+                    name: "cantidadBolsa",
+                    value: "0",
+                    },
+                } as React.ChangeEvent<HTMLInputElement>;
+                handleImporteChange(fakeEvent, setCosteo, materiales, producto);
+                }
+            }}
             displayEmpty
             fullWidth
             >

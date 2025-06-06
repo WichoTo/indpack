@@ -83,9 +83,9 @@ const TaconesRow: React.FC<TaconEditorProps> = ({
             }}
             displayEmpty
             >
-            <MenuItem value="">Selecciona tipo de tacón</MenuItem>
-            <MenuItem value="Corrido">Corrido</MenuItem>
-            <MenuItem value="Pieza">Pieza</MenuItem>
+            <MenuItem value="">Sin Tacones</MenuItem>
+            <MenuItem value="Corrido">Tacon Corrido</MenuItem>
+            <MenuItem value="Pieza">Tacon por Pieza</MenuItem>
             </Select>
         </FormControl>
         </Box>

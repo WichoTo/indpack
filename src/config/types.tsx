@@ -181,6 +181,10 @@ export interface Producto {
 
   importeTotal: number;
 
+  factorFinanciamiento?: number;
+
+  importeTotalFinanciamiento?: number;
+
   totales: Totales[];
 
   polinesAbajo: PolinAbajo[];
@@ -195,6 +199,8 @@ export interface Producto {
   tendido: Tendido;
   paredes: Paredes;
   duelas: Duelas;
+  [key: string]: any;
+
 }
 
 
@@ -294,9 +300,17 @@ export interface Duelas{
 
 
 export interface Totales {
-  tipo: string;
-  cantidad: number;
-  medida: number;
+   tipo: string;
+  cantidad?: number;
+  medida?: number;
+  precioUnitario?: number;
   precioTotal: number;
   pesoTotal: number;
 }
+export type MaterialTotalRow = {
+  tipo: string;
+  cantidad?: number;
+  medida?: number;
+  precioUnitario?: number;
+  precioTotal: number;
+};

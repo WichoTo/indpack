@@ -29,6 +29,17 @@ const CosteoModal: React.FC<CosteoModalProps> = ({ open, onClose,sucursalid,cost
     const handleChange = (field: keyof Costeo, value: any) => {
         setCosteo(prev => ({ ...prev, [field]: value }))
     }
+useEffect(() => {
+  if (!selectedCliente) return;
+  const now = Temporal.Now.plainDateTimeISO('America/Mexico_City');
+  const year2 = String(now.year).slice(-2);
+  const month2 = String(now.month).padStart(2, '0');
+  const prefijo = `COT - ${year2} - ${month2} - `;
+  const contador = costeos.filter(c => c.folio?.startsWith(prefijo)).length;
+  const base = `${prefijo}${contador + 1}`;
+  const nuevoFolio = `${base}-${selectedCliente.empresa}`;
+  setCosteo(prev => ({ ...prev, folio: nuevoFolio }));
+}, [selectedCliente, costeos]);
 
     useEffect(() => {
     if (costeo.clienteid && clientes.length > 0) {
@@ -108,7 +119,7 @@ const handleClose = () => {
                 <Typography variant="h6" sx={{ fontWeight: "bold", color: "var(--secondary-color)" }}>
                     COTIZACIÓN
                 </Typography>
-                <Typography variant="body2" sx={{  color: "var(--secondary-color)" }}>{handleGenerarFolioCosteo()}</Typography>
+                <Typography variant="body2" sx={{  color: "var(--secondary-color)" }}>{costeo.folio}</Typography>
                 <Typography variant="body2" sx={{  color: "var(--secondary-color)" }}>{fechaActual}</Typography>
             </Box>
         </Box>
@@ -182,58 +193,65 @@ const handleClose = () => {
               value={costeo.fechaEnvio || ''}
               onChange={((e)=>handleChange("fechaEnvio",e.target.value))}
             />
-            <TextField
-              fullWidth
-              size="small"
-              margin="normal"
-              label="Destino"
-              value={costeo.destino || ''}
-              onChange={((e)=>handleChange("destino",e.target.value))}
-            />
+            <FormControl fullWidth size="small" margin="normal">
+              <InputLabel id="destino-select-label">Destino</InputLabel>
+              <Select
+                labelId="destino-select-label"
+                label="Destino"
+                name="destino"
+                value={costeo.destino || ''}
+                onChange={(e) => handleChange("destino", e.target.value)}
+              >
+                <MenuItem value="">Selecciona destino</MenuItem>
+                <MenuItem value="Nacional">Nacional</MenuItem>
+                <MenuItem value="Internacional">Internacional</MenuItem>
+              </Select>
+            </FormControl>
+
           </Grid>
         </Box>
-         <Box sx={{ display: 'center', gap: 1 }}>
+         <Box sx={{ display: 'flex', gap: 1 }}>
                 <TextField
                     fullWidth
                     size="small"
                     margin="normal"
-                    label="Título"
+                    label="Proyecto"
                     value={costeo.tituloPedido || ''}
                     onChange={e => handleChange("tituloPedido", e.target.value)}
                 />
-    </Box>
-    <Box sx={{ display: 'flex', gap: 1 }}>
-            <TextField
-                fullWidth
-                size="small"
-                margin="normal"
-                label="Descripcion"
-                value={costeo.descripcion || ''}
-                onChange={e => handleChange("descripcion", e.target.value)}
-            />
-    </Box>
-    <Box sx={{ display: 'flex', gap: 1 }}>
-            <DocumentUploadList
-                documents={costeo.referenciasCosteo??[]}
-                onUpload={handleUpload}
-                onDelete={handleDelete}
-                maxFiles={10}
-            />
-    </Box>
-    <Box sx={{ display: 'flex', gap: 1 }}>
-        <TablaProductos costeo={costeo} setCosteo={setCosteo} sucursalid={sucursalid} tiposMateriales={tiposMateriales}/>
-    </Box>
-</DialogContent>
-<DialogActions sx={{ px: 2, pb: 2 }}>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={()=>onSave(costeo)}
-        >
-          Guardar Costeo
-        </Button>
-      </DialogActions>
-</Dialog>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+                    <TextField
+                        fullWidth
+                        size="small"
+                        margin="normal"
+                        label="Descripcion"
+                        value={costeo.descripcion || ''}
+                        onChange={e => handleChange("descripcion", e.target.value)}
+                    />
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+                    <DocumentUploadList
+                        documents={costeo.referenciasCosteo??[]}
+                        onUpload={handleUpload}
+                        onDelete={handleDelete}
+                        maxFiles={10}
+                    />
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+                <TablaProductos costeo={costeo} setCosteo={setCosteo} sucursalid={sucursalid} tiposMateriales={tiposMateriales}/>
+            </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, pb: 2 }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={()=>onSave(costeo)}
+                >
+                  Guardar Costeo
+                </Button>
+              </DialogActions>
+        </Dialog>
   )
 }
 

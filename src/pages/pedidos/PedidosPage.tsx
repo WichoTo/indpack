@@ -24,7 +24,7 @@ import { fechaActual } from '../../hooks/useDateUtils'
 const PedidosPage: React.FC = () => {
   const { user } = useAuthRole()
   const { selectedSucursal } = useSucursal()
-  const { costeos } = useFetchCosteos(selectedSucursal?.id ?? '')
+  const { costeos } = useFetchCosteos(selectedSucursal?.id ?? '') 
   const { clientes } = useFetchClientes()
   const sucursalid = selectedSucursal?.id ?? ""
   

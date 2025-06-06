@@ -202,7 +202,7 @@ const handleDelete = async (doc: Document): Promise<void> => {
 
         <Box display="grid" gridTemplateColumns={{ xs: '1fr',  sm: '1fr'}} gap={2} mb={1} alignItems="center">
           <Box sx={{ width: '100%' }}>
-            <TotalesTable totales={producto.totales} />
+            <TotalesTable totales={producto.totales} materiales={materiales} setPedidoActivo={setCosteo} producto={producto}/>
           </Box>
         </Box>
         <ImportesRow

@@ -83,7 +83,7 @@ const CorralRow: React.FC<Props> = ({
             }}
             displayEmpty
           >
-            <MenuItem value="">Selecciona tipo de corral</MenuItem>
+            <MenuItem value="">Sin Corral</MenuItem>
             {["Corrido", "Parcial Largo", "Parcial Ancho", "Topes"].map((tipo) => (
               <MenuItem key={tipo} value={tipo}>
                 {tipo}

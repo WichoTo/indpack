@@ -170,7 +170,7 @@ const DuelasRow: React.FC<Props> = ({
               margin="dense"
                 fullWidth
                 label="Cant Largueros"
-                value={producto?.duelas?.postes?.[1]?.cantidad ?? 0}
+                value={producto?.duelas?.largueros?.[1]?.cantidad ?? 0}
                 onChange={(e) => {
                   handleDuelasChange(producto?.id ?? "", "postes", "cantidad", 1, Number(e.target.value), setCosteo);
                   if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
@@ -183,7 +183,7 @@ const DuelasRow: React.FC<Props> = ({
               margin="dense"
                 fullWidth
                 label="Medidas Largueros"
-                value={producto?.duelas?.postes?.[1]?.medida ?? 0}
+                value={producto?.duelas?.largueros?.[1]?.medida ?? 0}
                 onChange={(e) => {
                   handleDuelasChange(producto?.id ?? "", "postes", "medida", 1, Number(e.target.value), setCosteo);
                   if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
@@ -196,7 +196,7 @@ const DuelasRow: React.FC<Props> = ({
               margin="dense"
                 fullWidth
                 label="Cant Postes"
-                value={producto?.duelas?.largueros?.[1]?.cantidad ?? 0}
+                value={producto?.duelas?.postes?.[1]?.cantidad ?? 0}
                 onChange={(e) => {
                   handleDuelasChange(producto?.id ?? "", "largueros", "cantidad", 1, Number(e.target.value), setCosteo);
                   if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
@@ -209,7 +209,7 @@ const DuelasRow: React.FC<Props> = ({
               margin="dense"
                 fullWidth
                 label="Medidas Postes"
-                value={producto?.duelas?.largueros?.[1]?.medida ?? 0}
+                value={producto?.duelas?.postes?.[1]?.medida ?? 0}
                 onChange={(e) => {
                   handleDuelasChange(producto?.id ?? "", "largueros", "medida", 1, Number(e.target.value), setCosteo);
                   if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
@@ -219,7 +219,7 @@ const DuelasRow: React.FC<Props> = ({
 
           <Box sx={{ gridColumn: 'span 4' }}>
             <Typography variant="subtitle1" sx={{ fontWeight: "bold",  color: "var(--primary-color)" }}>
-              Duelate
+              Duela Techo
             </Typography>
           </Box>
           <Box>

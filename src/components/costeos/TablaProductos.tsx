@@ -50,7 +50,7 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
   
       const incrLargoBase = 9;
       const incrAnchoBase = 9;
-      const incrAltoBase = 8;
+      const incrAltoBase = 10;
       const grosorBase = 3;
   
       const largoEquipoInicial = 0;
@@ -118,7 +118,7 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
         polinAmarre: {
           cantidad: 0,
           tipoPolin: calcularTipoPolin(0,materiales),
-          medida: largoEmpaque,
+          medida: anchoEmpaque,
         },
   
         polinesFijacion: [] as PolinFijacion[],
@@ -169,11 +169,8 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
   
   const montoTotal = useMemo(() => {
     return costeo.productos.reduce((total, producto) => {
-      const precioUnitario = producto.precioUnitario || 0;
-      const importeBolsaAntihumedad = producto.importeBolsaAntihumedad || 0;
-      const cantidad = producto.cantidad || 0;
       
-      return total + (precioUnitario + importeBolsaAntihumedad) * cantidad;
+      return total + producto.importeTotalFinanciamiento!;
     }, 0);
   }, [costeo.productos]);
   
@@ -460,7 +457,7 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
               {mostrarTermo && (
                 <TableCell padding="none" sx={{ px: 1, py: 0.5, color: 'var(--primary-color)', fontWeight: 'bold' }}>{formatoMoneda(String(producto.importeTermo))}</TableCell>
               )}
-              <TableCell padding="none" sx={{ px: 1, py: 0.5, color: 'var(--primary-color)', fontWeight: 'bold' }}>{formatoMoneda( producto.importeTotal)}</TableCell>
+              <TableCell padding="none" sx={{ px: 1, py: 0.5, color: 'var(--primary-color)', fontWeight: 'bold' }}>{formatoMoneda( producto.importeTotalFinanciamiento!)}</TableCell>
               <TableCell padding="none" sx={{ px: 1, py: 0.5, color: 'var(--primary-color)', fontWeight: 'bold' }}>
                 <IconButton onClick={() => handleAbrirModal(producto)} sx={{ color: "gray" }}>
                   <VisibilityIcon />
