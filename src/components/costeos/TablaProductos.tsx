@@ -412,7 +412,15 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
                   name="peso"
                   type="number"
                   value={producto.peso?? 0}
-                  onChange={(event) => handleProductoChange(event.target.value,"peso", setCosteo, producto?.id ?? "",materiales)}
+                  onChange={(event) => {
+                    handleProductoChange(event.target.value,"peso", setCosteo, producto?.id ?? "",materiales);
+                    if(producto?.id){
+                      handleMedidasProductoChange(producto.id, setCosteo,materiales);
+                      handleCalcularMedidaCorral(producto.id, setCosteo,materiales);
+                      handleCalcularTotales(producto.id, setCosteo, materiales);
+                      actualizarMedidasParedes(producto.id, setCosteo);
+                    }
+                  }}
                   sx={{minWidth: "120px"}}
                 />
               </TableCell>

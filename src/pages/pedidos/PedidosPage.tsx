@@ -14,7 +14,7 @@ import {
 } from '@mui/material'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import { Costeo } from '../../config/types'
-import { actualizarCosteo, useFetchClientes, useFetchCosteos } from '../../hooks/useFetchFunctions'
+import { actualizarCosteo,  useFetchCosteos, useFetchEmpresas } from '../../hooks/useFetchFunctions'
 import { useAuthRole } from '../../config/auth'
 import Spinner from '../../components/general/Spinner'
 import { useSucursal } from '../../config/context/SucursalContext'
@@ -25,7 +25,7 @@ const PedidosPage: React.FC = () => {
   const { user } = useAuthRole()
   const { selectedSucursal } = useSucursal()
   const { costeos } = useFetchCosteos(selectedSucursal?.id ?? '') 
-  const { clientes } = useFetchClientes()
+  const { empresas } = useFetchEmpresas()
   const sucursalid = selectedSucursal?.id ?? ""
   
   const userid = user?.id ?? ""
@@ -34,7 +34,10 @@ const PedidosPage: React.FC = () => {
   id: crypto.randomUUID(),
   folio: '',
   userid,
-  clienteid: '',
+  empresaid: '',
+  nombreCompleto: '',
+  correoElectronico: '',
+  celular: '',
   sucursalid,
   destino: '',
   direccion: '',
@@ -114,12 +117,12 @@ const PedidosPage: React.FC = () => {
             </TableHead>
             <TableBody>
               {costeos.map(c => {
-                const cli = clientes.find(x => x.id === c.clienteid)
+                const cli = empresas.find(x => x.id === c.empresaid)
                 return (
                   <TableRow key={c.id} hover>
                     <TableCell>{c.folio}</TableCell>
-                    <TableCell>{cli?.nombreCompleto || '–'}</TableCell>
-                    <TableCell>{cli?.empresa || '–'}</TableCell>
+                    <TableCell>{c.nombreCompleto || '–'}</TableCell>
+                    <TableCell>{cli?.nombre || '–'}</TableCell>
                     <TableCell>{c.direccion}</TableCell>
                     <TableCell>{c.fechaEnvio || '–'}</TableCell>
                     <TableCell>{c.estado || '–'}</TableCell>

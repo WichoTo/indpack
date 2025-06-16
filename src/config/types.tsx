@@ -84,13 +84,22 @@ export interface MaterialHistorico {
   peso: number;
   fecha: string;
 }
-
+export interface Empresa {
+  id: string;
+  nombre: string;
+  nombrecontacto: string;
+  correoconctacto?: string;
+  telefono: string;
+  userid: string;
+  sucursalid:string
+}
 export interface Cliente {
   id: string;
   nombreCompleto: string;
   correoElectronico?: string;
   celular: string;
   empresa: string;
+  empresaid:string
   userid: string;
   sucursalid:string
 }
@@ -100,7 +109,11 @@ export interface Costeo {
   id: string;
   folio: string;
   userid: string;
-  clienteid: string;
+  empresaid: string;
+  nombreCompleto:string;
+  clienteid?:string;
+  correoElectronico:string;
+  celular:string;
   sucursalid: string;
   destino: string;
   direccion: string;

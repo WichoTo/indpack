@@ -14,273 +14,191 @@ import {
   TaconCorrido,
   TaconPieza,
   TipoTacon,
-  Tacon,
-  Material
+  Tacon
 } from '../../config/types';
 import { calcularTipoPolin, handleCalcularTotales } from '../../hooks/useFetchCosteo';
 
-interface TaconEditorProps {
+interface TaconesRowProps {
   producto: Producto;
   costeo: Costeo;
   setCosteo: React.Dispatch<React.SetStateAction<Costeo>>;
-  materiales:Material[]
-  tiposMateriales:Record<string, string[]>
+  materiales: any[];
+  tiposMateriales: Record<string, string[]>;
 }
 
-const TaconesRow: React.FC<TaconEditorProps> = ({
-  producto,
-  setCosteo,
-  materiales,
-  tiposMateriales
-}) => {
-    
+const TaconesRow: React.FC<TaconesRowProps> = ({ producto,  setCosteo, materiales, tiposMateriales }) => {
+  const onTipoChange = (nuevoTipo: TipoTacon) => {
+    setCosteo(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        productos: prev.productos.map(p => {
+          if (p.id !== producto.id) return p;
+          if (nuevoTipo === 'Corrido') {
+            // inicializar tacon corrido
+            const tipoPolin = calcularTipoPolin( p.peso ?? 0, materiales);
+            return {
+              ...p,
+              tipoTacon: 'Corrido',
+              tacon: {
+                tipoCorral: 'Corrido',
+                tipoPolin,
+                cantidad: 3,
+                medida: p.anchoEmpaque
+              } as TaconCorrido
+            };
+          }
+          if (nuevoTipo === 'Pieza') {
+            // inicializar tacon por pieza con default cantidad 0 y polin calculado
+            const tipoPolin = calcularTipoPolin( p.peso ?? 0, materiales);
+            return {
+              ...p,
+              tipoTacon: 'Pieza',
+              tacon: {
+                tipoPolin,
+                cantidad: 0
+              } as TaconPieza
+            };
+          }
+          // Sin tacones
+          return { ...p, tipoTacon: '', tacon: {} as Tacon };
+        })
+      };
+    });
+    handleCalcularTotales(producto.id, setCosteo, materiales);
+  };
 
+  // cuando cambia cantidad en pieza o corrido, siempre existe tacon inicial
+  const onCantidadChange = (valor: number) => {
+    setCosteo(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        productos: prev.productos.map(p => {
+          if (p.id !== producto.id) return p;
+          const t = { ...(p.tacon as any) };
+          t.cantidad = valor;
+          return { ...p, tacon: t };
+        })
+      };
+    });
+    handleCalcularTotales(producto.id, setCosteo, materiales);
+  };
+
+  const onTipoPolinChange = (valor: string) => {
+    setCosteo(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        productos: prev.productos.map(p => {
+          if (p.id !== producto.id) return p;
+          const t = { ...(p.tacon as any) };
+          t.tipoPolin = valor;
+          return { ...p, tacon: t };
+        })
+      };
+    });
+    handleCalcularTotales(producto.id, setCosteo, materiales);
+  };
+
+  const onMedidaChange = (valor: number) => {
+    setCosteo(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        productos: prev.productos.map(p => {
+          if (p.id !== producto.id) return p;
+          const t = { ...(p.tacon as any) };
+          t.medida = valor;
+          return { ...p, tacon: t };
+        })
+      };
+    });
+    handleCalcularTotales(producto.id, setCosteo, materiales);
+  };
 
   return (
-    <Box display="grid" gridTemplateColumns={{ xs: '1fr',  sm: '1fr 1fr 1fr '}} gap={2} mb={1} alignItems="center">
-        <Box sx={{ gridColumn: 'span 3' }}>
-        <Typography variant="h6" sx={{ fontWeight: "bold", mt: 1, color: "var(--primary-color)" }}>
-            TACONES
+    <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr 1fr' }} gap={2} mb={1}>
+
+      <Box sx={{ gridColumn: 'span 3' }}>
+        <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
+          TACONES
         </Typography>
-        </Box>
-        <Box sx={{ gridColumn: 'span 3' }}>
-        <FormControl fullWidth>
-            <Select
-            size="small" margin="dense"
-            value={producto?.tipoTacon ?? ''}
-            onChange={(e) => {
-                const nuevoTipo = e.target.value as TipoTacon;
-                if (!producto?.id) return;
-                setCosteo((prev) => {
-                if (!prev) return prev;
-                return {
-                    ...prev,
-                    productos: prev.productos.map((prod) => {
-                    if (prod.id !== producto.id) return prod;
-                    if (nuevoTipo === 'Corrido') {
-                        return {
-                        ...prod,
-                        tipoTacon: 'Corrido',
-                        tacon: {
-                            tipoCorral: 'Corrido',
-                            tipoPolin: calcularTipoPolin(prod.peso ?? 0,materiales),
-                            cantidad: 3,
-                            medida: prod.anchoEmpaque,
-                        } as TaconCorrido,
-                        };
-                    }
+      </Box>
 
-                    // Si es "Pieza" o vacío, reseteamos tacon
-                    return {
-                        ...prod,
-                        tipoTacon: nuevoTipo,
-                        tacon: {} as Tacon,
-                    };
-                    }),
-                };
-                });
-                handleCalcularTotales(producto.id, setCosteo, materiales);
-            }}
-            displayEmpty
-            >
-            <MenuItem value="">Sin Tacones</MenuItem>
-            <MenuItem value="Corrido">Tacon Corrido</MenuItem>
-            <MenuItem value="Pieza">Tacon por Pieza</MenuItem>
-            </Select>
-        </FormControl>
-        </Box>
+      <FormControl fullWidth size="small" margin="dense">
+        <InputLabel id="label-tipo-tacon">Tipo Tacón</InputLabel>
+        <Select
+          labelId="label-tipo-tacon"
+          value={producto.tipoTacon || ''}
+          label="Tipo Tacón"
+          onChange={e => onTipoChange(e.target.value as TipoTacon)}
+        >
+          <MenuItem value="">Sin Tacones</MenuItem>
+          <MenuItem value="Corrido">Tacon Corrido</MenuItem>
+          <MenuItem value="Pieza">Tacon por Pieza</MenuItem>
+        </Select>
+      </FormControl>
 
-        {/* Campos solo si es Corrido */}
-        {producto?.tipoTacon === 'Corrido' && (
+      {producto.tipoTacon === 'Corrido' && (
         <>
-            {/* Cantidad */}
-            <TextField
-            fullWidth
-            size="small" margin="dense"
-            label="Cantidad Tacón Corrido"
+          <TextField
+            size="small"
+            margin="dense"
+            label="Cantidad"
             type="number"
             value={(producto.tacon as TaconCorrido).cantidad}
-            onChange={(e) => {
-                const nuevaCantidad = parseFloat(e.target.value) || 0;
-                if (!producto.id) return;
-                setCosteo((prev) => {
-                if (!prev) return prev;
-                return {
-                    ...prev,
-                    productos: prev.productos.map((prod) => {
-                    if (prod.id !== producto.id) return prod;
-                    return {
-                        ...prod,
-                        tacon: {
-                        ...(prod.tacon as TaconCorrido),
-                        cantidad: nuevaCantidad,
-                        } as TaconCorrido,
-                    };
-                    }),
-                };
-                });
-                handleCalcularTotales(producto.id, setCosteo, materiales);
-            }}
-            sx={{ mt: 2 }}
-            />
-
-            {/* Tipo de Polín */}
-            <FormControl fullWidth variant="outlined" sx={{ mt: 1 }}>
-            <InputLabel id="label-tipo-polin">Tipo de Polín</InputLabel>
+            onChange={e => onCantidadChange(Number(e.target.value) || 0)}
+          />
+          <FormControl fullWidth size="small" margin="dense">
+            <InputLabel id="label-polin-corrido">Tipo Polín</InputLabel>
             <Select
-                size="small" margin="dense"
-                labelId="label-tipo-polin"
-                id="select-tipo-polin"
-                label="Tipo de Polín"
-                value={
-                (producto.tacon as TaconCorrido).tipoPolin ||
-                calcularTipoPolin(producto.peso ?? 0,materiales)
-                }
-                onChange={(e) => {
-                const nuevoPolin = e.target.value;
-                if (!producto.id) return;
-                setCosteo((prev) => {
-                    if (!prev) return prev;
-                    return {
-                    ...prev,
-                    productos: prev.productos.map((prod) => {
-                        if (prod.id !== producto.id) return prod;
-                        return {
-                        ...prod,
-                        tacon: {
-                            ...(prod.tacon as TaconCorrido),
-                            tipoPolin: nuevoPolin,
-                        } as TaconCorrido,
-                        };
-                    }),
-                    };
-                });
-                handleCalcularTotales(producto.id, setCosteo, materiales);
-                }}
-                displayEmpty
+              labelId="label-polin-corrido"
+              value={(producto.tacon as TaconCorrido).tipoPolin}
+              label="Tipo Polín"
+              onChange={e => onTipoPolinChange(e.target.value)}
             >
-                <MenuItem value="">Selecciona tipo</MenuItem>
-                {tiposMateriales.Polines.map((valor) => (
-                <MenuItem key={valor} value={valor}>
-                    {valor}
-                </MenuItem>
-                ))}
+              {tiposMateriales.Polines.map(v => (
+                <MenuItem key={v} value={v}>{v}</MenuItem>
+              ))}
             </Select>
-            </FormControl>
-
-            {/* Medida */}
-            <TextField
-            fullWidth
-            size="small" margin="dense"
-            label="Medida Tacón Corrido"
+          </FormControl>
+          <TextField
+            size="small"
+            margin="dense"
+            label="Medida"
             type="number"
-            InputLabelProps={{ shrink: true }}             
-            value={(producto.tacon as TaconCorrido).medida ?? producto.anchoEmpaque}
-            onChange={(e) => {
-                const nuevaMedida = parseFloat(e.target.value) || 0;
-                if (!producto.id) return;
-                setCosteo((prev) => {
-                if (!prev) return prev;
-                return {
-                    ...prev,
-                    productos: prev.productos.map((prod) => {
-                    if (prod.id !== producto.id) return prod;
-                    return {
-                        ...prod,
-                        tacon: {
-                        ...(prod.tacon as TaconCorrido),
-                        medida: nuevaMedida,
-                        } as TaconCorrido,
-                    };
-                    }),
-                };
-                });
-                handleCalcularTotales(producto.id, setCosteo, materiales);
-            }}
-            sx={{ mt: 2 }}
-            />
+            value={(producto.tacon as TaconCorrido).medida}
+            onChange={e => onMedidaChange(Number(e.target.value) || 0)}
+          />
         </>
-        )}
-        {producto?.tipoTacon === 'Pieza' && (
+      )}
+
+      {producto.tipoTacon === 'Pieza' && (
         <>
-            {/* Cantidad de Tacón Pieza */}
-            <TextField
-            size="small" margin="dense"
-            fullWidth
-            label="Cantidad Tacón Pieza"
+          <TextField
+            size="small"
+            margin="dense"
+            label="Cantidad"
             type="number"
             value={(producto.tacon as TaconPieza).cantidad}
-            onChange={(e) => {
-                const nuevaCantidad = parseFloat(e.target.value) || 0;
-                if (!producto.id) return;
-                setCosteo(prev => {
-                if (!prev) return prev;
-                return {
-                    ...prev,
-                    productos: prev.productos.map(prod => {
-                    if (prod.id !== producto.id) return prod;
-                    return {
-                        ...prod,
-                        tacon: {
-                        // Como TaconPieza sólo tiene tipoPolin & cantidad
-                        ...(prod.tacon as TaconPieza),
-                        cantidad: nuevaCantidad,
-                        } as TaconPieza,
-                    };
-                    }),
-                };
-                });
-                handleCalcularTotales(producto.id, setCosteo, materiales);
-            }}
-            sx={{ mt: 2 }}
-            />
-
-            {/* Tipo de Polín para Tacón Pieza */}
-            <FormControl fullWidth variant="outlined" sx={{ mt: 1 }}>
-            <InputLabel id="label-tipo-polin-pieza">
-                Tipo de Polín
-            </InputLabel>
+            onChange={e => onCantidadChange(Number(e.target.value) || 0)}
+          />
+          <FormControl fullWidth size="small" margin="dense">
+            <InputLabel id="label-polin-pieza">Tipo Polín</InputLabel>
             <Select
-                size="small" margin="dense"
-                labelId="label-tipo-polin-pieza"
-                id="select-tipo-polin-pieza"
-                label="Tipo de Polín"
-                value={(producto.tacon as TaconPieza).tipoPolin || calcularTipoPolin(producto.peso??0,materiales)}
-                onChange={(e) => {
-                const nuevoPolin = e.target.value;
-                if (!producto.id) return;
-                setCosteo(prev => {
-                    if (!prev) return prev;
-                    return {
-                    ...prev,
-                    productos: prev.productos.map(prod => {
-                        if (prod.id !== producto.id) return prod;
-                        return {
-                        ...prod,
-                        tacon: {
-                            ...(prod.tacon as TaconPieza),
-                            tipoPolin: nuevoPolin,
-                        } as TaconPieza,
-                        };
-                    }),
-                    };
-                });
-                handleCalcularTotales(producto.id, setCosteo, materiales);
-                }}
-                displayEmpty
+              labelId="label-polin-pieza"
+              value={(producto.tacon as TaconPieza).tipoPolin}
+              label="Tipo Polín"
+              onChange={e => onTipoPolinChange(e.target.value)}
             >
-                <MenuItem value="">Selecciona tipo</MenuItem>
-                {tiposMateriales.Polines.map(valor => (
-                <MenuItem key={valor} value={valor}>
-                    {valor}
-                </MenuItem>
-                ))}
+              {tiposMateriales.Polines.map(v => (
+                <MenuItem key={v} value={v}>{v}</MenuItem>
+              ))}
             </Select>
-            </FormControl>
+          </FormControl>
         </>
-        )}
-
-
+      )}
 
     </Box>
   );

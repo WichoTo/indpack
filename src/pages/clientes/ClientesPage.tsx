@@ -37,6 +37,7 @@ const Page: React.FC = () => {
     correoElectronico:'',
     celular:'',
     empresa:'',
+    empresaid:'',
     userid:user?.id || '',
     sucursalid:selectedSucursal?.id??'',
   }

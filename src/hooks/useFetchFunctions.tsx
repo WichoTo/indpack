@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { User , Sucursal,Document, Material, MaterialHistorico, Cliente, Costeo, MaterialSuc } from '../config/types';
+import type { User , Sucursal,Document, Material, MaterialHistorico, Cliente, Costeo, MaterialSuc, Empresa } from '../config/types';
 import { supabase } from '../config/supabase';
 import { normalizeFileName } from './useUtilsFunctions';
 //import { normalizeFileName } from './useUtilsFunctions';
@@ -374,6 +374,112 @@ export const useFetchMaterialesSuc = (sucursalid?: string) => {
 export async function actualizarMaterial(
   data: MaterialSuc
 ): Promise<MaterialSuc> {
+  // --- 1) MASTER UPSERT (como antes) ---
+  const { data: masterCurrent, error: masterFetchErr } = await supabase
+    .from('materiales')
+    .select('*')
+    .eq('id', data.idMaterial)
+    .maybeSingle()
+  if (masterFetchErr) throw masterFetchErr
+  if (!masterCurrent) throw new Error(`Material maestro ${data.idMaterial} no encontrado`)
+
+  // siempre reescribimos el master con nuevo pesoMaximo y histórico
+  const masterPrev: MaterialHistorico[] = masterCurrent.historico ?? []
+  const masterEntry: MaterialHistorico = {
+    sucursalid: data.sucursalid,
+    tipo:       data.tipo,
+    nombre:     data.nombre.replace(/\s+/g, ''),
+    precio:     data.precio,
+    peso:       data.peso,
+    fecha:      new Date().toISOString(),
+  }
+
+  const masterPayload: Partial<Material> = {
+    id:         data.idMaterial,
+    userid:     data.userid,
+    tipo:       data.tipo,
+    nombre:     data.nombre.replace(/\s+/g, ''),
+    precio:     data.precio,
+    peso:       data.peso,
+    pesoMaximo: data.pesoMaximo,
+    historico:  [...masterPrev, masterEntry],
+  }
+
+  const { data: masterResult, error: masterUpsertErr } = await supabase
+    .from('materiales')
+    .upsert(masterPayload, { onConflict: 'id' })
+    .select()
+  if (masterUpsertErr) throw masterUpsertErr
+  const updatedMaster = masterResult![0]
+
+  // --- 2) BRANCH UPSERT: sólo para la sucursal actual ---
+  // 2.1) Leer histórico previo de esta sucursal (si existe)
+  let sucPrev: MaterialHistorico[] = []
+  if (data.id) {
+    const { data: sucCurrent, error: sucFetchErr } = await supabase
+      .from('materialesSuc')
+      .select('historico')
+      .eq('id', data.id)
+      .maybeSingle()
+    if (sucFetchErr) throw sucFetchErr
+    sucPrev = sucCurrent?.historico ?? []
+  }
+
+  // 2.2) Crear entrada de histórico para esta sucursal
+  const sucEntry: MaterialHistorico = {
+    sucursalid: data.sucursalid,
+    tipo:       data.tipo,
+    nombre:     data.nombre.replace(/\s+/g, ''),
+    precio:     data.precio,
+    peso:       data.peso,
+    fecha:      new Date().toISOString(),
+  }
+
+  // 2.3) Generar id si se está creando
+  const branchId = data.id ?? crypto.randomUUID()
+
+  // 2.4) Upsert de la sucursal actual
+  const branchPayload: MaterialSuc = {
+    id:         branchId,
+    idMaterial: updatedMaster.id,
+    userid:     data.userid,
+    sucursalid: data.sucursalid,
+    tipo:       data.tipo,
+    nombre:     data.nombre.replace(/\s+/g, ''),
+    precio:     data.precio,
+    peso:       data.peso,
+    pesoMaximo: data.pesoMaximo,
+    historico:  [...sucPrev, sucEntry],
+  }
+
+  const { data: sucResult, error: sucUpsertErr } = await supabase
+    .from('materialesSuc')
+    .upsert(branchPayload, { onConflict: 'id' })
+    .select()
+  if (sucUpsertErr) throw sucUpsertErr
+
+  const currentBranch = sucResult![0]
+
+  // --- 3) SINCRONIZAR pesoMaximo EN TODAS LAS SUCURSALES ---
+  // Actualiza el pesoMaximo en *todas* las filas de materialesSuc
+  const { error: syncErr } = await supabase
+    .from('materialesSuc')
+    .update({ pesoMaximo: data.pesoMaximo })
+    .eq('idMaterial', updatedMaster.id)
+  if (syncErr) throw syncErr
+
+  // devolvemos el registro de la sucursal en la que el usuario estaba trabajando
+  return currentBranch
+}
+
+
+
+
+
+
+export async function actualizarMaterial1(
+  data: MaterialSuc
+): Promise<MaterialSuc> {
   // --- 1) MASTER UPSERT: 'materiales' table ---
 
   // 1.1) Leer el historial existente
@@ -465,7 +571,80 @@ export async function actualizarMaterial(
 
   return sucResult![0]
 }
+/////////////////////////////////////////////////Empresas////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+export const useFetchEmpresas = (sucursalid?: string) => {
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
+  const fetchEmpresas = async () => {
+    setLoading(true);
+    try {
+      let query = supabase.from('empresas').select('*');
+      if (sucursalid) {
+        query = query.eq('sucursalid', sucursalid);
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      setEmpresas(data || []);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmpresas();
+  }, [sucursalid]);
+
+  useEffect(() => {
+    if (!sucursalid) return;
+    const channel = supabase
+      .channel(`empresas_suc_${sucursalid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'empresas',
+          filter: `sucursalid=eq.${sucursalid}`,
+        },
+        () => {
+          fetchEmpresas();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sucursalid]);
+
+  return { empresas, loading, error, fetchEmpresas };
+};
+export const actualizarEmpresa = async (empresa: Empresa): Promise<void> => {
+  const { error } = await supabase
+    .from('empresas')
+    .upsert(empresa, { onConflict: 'id' })
+
+  if (error) {
+    console.error('Error guardando empresa:', error.message)
+    throw error
+  }
+}
+
+export const deleteEmpresa = async (id: string): Promise<void> => {
+  const { error } = await supabase
+    .from('empresas')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('Error eliminando empresa:', error.message)
+    throw error
+  }
+}
 
 /////////////////////////////////////////////////////CLIENTES//////////////////////////////////////////////////////
 export const useFetchClientes = (sucursalid?: string) => {
@@ -641,8 +820,98 @@ export const useFetchCosteosGeneral = () => {
 
   return { costeos, loading, error, fetchCosteos };
 };
-
 export async function actualizarCosteo(
+  costeo: Costeo
+): Promise<Costeo> {
+  const storage = supabase.storage.from('costeos');
+  const uploadedPaths: string[] = [];
+
+  // Sube un documento, o lo devuelve si ya existe (igual que antes)
+  async function uploadDoc(doc: Document): Promise<Document> {
+    if (!doc.file) return doc;
+    const safeName = normalizeFileName(doc.file.name);
+    const path = `${costeo.id}/${safeName}`;
+    await storage.remove([path]).catch(() => {});
+    const { error: uploadError } = await storage.upload(path, doc.file, {
+      upsert: true,
+    });
+    if (uploadError) throw uploadError;
+    uploadedPaths.push(path);
+    return { id: path, nombre: doc.file.name, url: path, path, bucket: 'costeos' };
+  }
+
+  // 1) Procesamos referenciasCosteo
+  const refs = costeo.referenciasCosteo ?? [];
+  const referenciasProcesadas = await Promise.all(refs.map(uploadDoc));
+
+  // 2) Procesamos el cliente único
+  let clienteid = costeo.clienteid;
+const clienteData = {
+  nombreCompleto: costeo.nombreCompleto,
+  correoElectronico: costeo.correoElectronico,
+  celular: costeo.celular,
+  empresaid: costeo.empresaid,
+  sucursalid: costeo.sucursalid
+};
+
+if (clienteid) {
+  // Si ya venía con ID, actualizamos
+  const { error: errUpd } = await supabase
+    .from('clientes')
+    .update(clienteData)
+    .eq('id', clienteid);
+  if (errUpd) throw errUpd;
+} else {
+  // Nuevo cliente: insert + select
+  const insertResult = await supabase
+    .from('clientes')
+    .insert(clienteData)
+    .select();
+  if (insertResult.error) throw insertResult.error;
+
+  const nuevos = insertResult.data;
+  if (nuevos && nuevos.length > 0) {
+    // Todo OK, recuperamos el id
+    clienteid = nuevos[0].id;
+  } else {
+    // Fallback: buscamos por correo+empresaid
+    const { data: found, error: errFind } = await supabase
+      .from('clientes')
+      .select('id')
+      .eq('correo', costeo.correoElectronico)
+      .eq('empresaid', costeo.empresaid)
+      .limit(1)
+      .single();
+    if (errFind) throw errFind;
+    clienteid = found.id;
+  }
+}
+
+// 3) Creamos el payload e incluimos clienteid…
+const payload: Costeo = {
+  ...costeo,
+  clienteid,
+  referenciasCosteo: referenciasProcesadas
+};
+
+  try {
+    // 4) Hacemos upsert en costeo
+    const { data, error } = await supabase
+      .from('costeo')
+      .upsert(payload, { onConflict: 'id' })
+      .select();
+    if (error) throw error;
+    return data![0];
+  } catch (err) {
+    // Si algo falla, limpiamos los archivos recién subidos
+    if (uploadedPaths.length) {
+      await storage.remove(uploadedPaths).catch(() => {});
+    }
+    throw err;
+  }
+}
+
+export async function actualizarCosteo2(
   costeo: Costeo
 ): Promise<Costeo> {
   const storage = supabase.storage.from('costeos')

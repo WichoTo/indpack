@@ -1,5 +1,5 @@
 // components/general/DocumentUploadList.tsx
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState } from 'react';
 import {
   Box,
   IconButton,
@@ -12,20 +12,20 @@ import {
   Typography,
   CircularProgress,
   Collapse,
-} from '@mui/material'
-import CloudUploadIcon from '@mui/icons-material/CloudUpload'
-import DeleteIcon from '@mui/icons-material/Delete'
-import VisibilityIcon from '@mui/icons-material/Visibility'
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
-import ExpandLessIcon from '@mui/icons-material/ExpandLess'
-import { Document } from '../../config/types'
-import { supabase } from '../../config/supabase'
+} from '@mui/material';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import DeleteIcon from '@mui/icons-material/Delete';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import { Document } from '../../config/types';
+import { supabase } from '../../config/supabase';
 
 interface DocumentUploadListProps {
-  documents: Document[]
-  onUpload: (files: FileList) => Promise<void>
-  onDelete?: (doc: Document) => Promise<void>
-  maxFiles?: number
+  documents: Document[];
+  onUpload: (files: FileList) => Promise<void>;
+  onDelete?: (doc: Document) => Promise<void>;
+  maxFiles?: number;
 }
 
 const DocumentUploadList: React.FC<DocumentUploadListProps> = ({
@@ -34,58 +34,52 @@ const DocumentUploadList: React.FC<DocumentUploadListProps> = ({
   onDelete,
   maxFiles,
 }) => {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
-  const [expanded, setExpanded] = useState(true)
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
-  const handleButtonClick = () => {
-    if (inputRef.current) inputRef.current.click()
-  }
+  const handleButtonClick = () => inputRef.current?.click();
 
   const handleFilesSelected = async (
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
-    if (!e.target.files?.length) return
-    setUploading(true)
+    if (!e.target.files?.length) return;
+    setUploading(true);
     try {
-      await onUpload(e.target.files)
-      e.target.value = '' // reset to allow re-upload same files
+      await onUpload(e.target.files);
+      e.target.value = '';
     } finally {
-      setUploading(false)
+      setUploading(false);
     }
-  }
+  };
 
   const handleView = async (doc: Document) => {
-    // If local File, create an object URL
+    let url: string | null = null;
+
+    // 1) Local blob
     if (doc.file) {
-      const url = URL.createObjectURL(doc.file)
-      window.open(url, '_blank')
-      return
+      url = URL.createObjectURL(doc.file);
     }
-    // If already has public URL, use it
-    if (doc.url) {
-      window.open(doc.url, '_blank')
-      return
-    }
-    // Otherwise, generate a signed URL from Supabase
-    if (doc.path && doc.bucket) {
+    // 2) Otherwise always generate a fresh signed URL
+    else if (doc.bucket && doc.path) {
       const { data, error } = await supabase
         .storage
         .from(doc.bucket)
-        .createSignedUrl(doc.path, 60) // 60 seconds
+        .createSignedUrl(doc.path, 60); // 60s
       if (error) {
-        console.error('Error generating signed URL', error)
-      } else if (data?.signedUrl) {
-        window.open(data.signedUrl, '_blank')
+        console.error('Error generating signed URL:', error.message);
+        return;
       }
+      url = data.signedUrl;
     }
-  }
+
+    if (url) window.open(url, '_blank');
+  };
 
   return (
     <Box>
-      {/* Header with toggle and upload */}
       <Box display="flex" alignItems="center" mb={1}>
-        <IconButton onClick={() => setExpanded(prev => !prev)}>
+        <IconButton onClick={() => setExpanded(x => !x)}>
           {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
         </IconButton>
         <Typography variant="h6" sx={{ flexGrow: 1 }}>
@@ -95,10 +89,7 @@ const DocumentUploadList: React.FC<DocumentUploadListProps> = ({
           <span>
             <IconButton
               onClick={handleButtonClick}
-              disabled={
-                uploading ||
-                (maxFiles != null && documents.length >= maxFiles)
-              }
+              disabled={uploading || (maxFiles != null && documents.length >= maxFiles)}
             >
               {uploading ? <CircularProgress size={24} /> : <CloudUploadIcon />}
             </IconButton>
@@ -116,7 +107,6 @@ const DocumentUploadList: React.FC<DocumentUploadListProps> = ({
         />
       </Box>
 
-      {/* Collapsible list */}
       <Collapse in={expanded} timeout="auto" unmountOnExit>
         <List dense>
           {documents.map(doc => (
@@ -129,15 +119,7 @@ const DocumentUploadList: React.FC<DocumentUploadListProps> = ({
 
               <ListItemText
                 primary={doc.nombre}
-                secondary={
-                  doc.url ? (
-                    <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                      Ver archivo
-                    </a>
-                  ) : (
-                    doc.path
-                  )
-                }
+                secondary={doc.path} 
               />
 
               {onDelete && (
@@ -152,7 +134,7 @@ const DocumentUploadList: React.FC<DocumentUploadListProps> = ({
         </List>
       </Collapse>
     </Box>
-  )
-}
+  );
+};
 
-export default DocumentUploadList
+export default DocumentUploadList;

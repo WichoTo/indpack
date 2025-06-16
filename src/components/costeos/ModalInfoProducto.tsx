@@ -207,10 +207,8 @@ const handleDelete = async (doc: Document): Promise<void> => {
         </Box>
         <ImportesRow
           producto={producto}
-          costeo={costeo}
           setCosteo={setCosteo}
           materiales={materiales}
-          tiposMateriales={tiposMateriales}
         />
 
 

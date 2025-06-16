@@ -168,7 +168,7 @@ export const handleCalcularTotales = (
       const t = producto.tacon as any;
       agregarAMedidaTotal(
         t.tipoPolin,
-        (Number(t.cantidad) * (producto.polinesAbajo?.[0]?.cantidad ?? 0)),
+        (Number(t.cantidad) * (producto.polinesAbajo?.[0]?.cantidad || 0)),
         30,
         true
       );
@@ -856,7 +856,7 @@ export const handleMedidasProductoChange = (
         } as TaconCorrido;
       } else if (tipoTacon === "Pieza") {
         nuevoTacon = {
-          tipoCorral: "Topes",
+          tipoCorral: "Pieza",
           tipoPolin:  nuevoTipoPolin,
           cantidad:   cantidadTacon,
         } as TaconPieza;
@@ -896,6 +896,11 @@ export const handleMedidasProductoChange = (
           cantidad:  prod.polinAmarre?.cantidad ?? 0,
           tipoPolin: nuevoTipoPolin,
           medida:    nuevoAnchoEmpaque,
+        },
+        maderaExtra:{
+            ...prod.maderaExtra,
+            tipoPolin: nuevoTipoPolin,
+
         },
 
         // F) Tendido
@@ -1123,34 +1128,32 @@ export function handleImporteChange(
 
 
       // 6) Recalcular “indirectos” si cambian flete/manoObra/varios directamente
-      if (name === 'flete' || name === 'manoObra' || name === 'varios') {
-        // Ya tenemos updated.flete/manoObra/varios = parsed
-        // Dejamos importeMaterialDirecto como estaba en p
-        console.log(name, parsed);
-        const impDir = p.importeMaterialDirecto ?? 0;
-        const nuevosVar = name === 'varios'   ? parsed : (p.varios   ?? 0);
-        const nuevosMan = name === 'manoObra' ? parsed : (p.manoObra ?? 0);
-        const nuevoFle = name === 'flete'     ? parsed : (p.flete    ?? 0);
-        const extras = updated.extras ?? 0;
+      if (name === 'varios' || name === 'manoObra' || name === 'flete') {
+        const impDir    = p.importeMaterialDirecto ?? 0;
+        // Definimos el porcentaje por defecto
+        const defaultPorc = {
+          varios:   0.15,
+          manoObra: 0.50,
+          flete:    0.15,
+        } as const;
 
-        // Asignar valores directos si cambiaron
-        updated.varios   = nuevosVar;
-        updated.manoObra = nuevosMan;
-        updated.flete    = nuevoFle;
+        // Creamos los tres valores, usando el “parsed” solo para el que editaste
+        const nuevos = {
+          varios:   name === 'varios'   ? parsed : impDir * defaultPorc.varios,
+          manoObra: name === 'manoObra' ? parsed : impDir * defaultPorc.manoObra,
+          flete:    name === 'flete'    ? parsed : impDir * defaultPorc.flete,
+        };
 
-        // Recalcular importeMaterialinDirecto = varios + manoObra + flete + extras
-        updated.importeMaterialinDirecto = nuevosVar + nuevosMan + nuevoFle + extras;
-console.log(updated.importeMaterialinDirecto);
-console.log(nuevosVar , nuevosMan , nuevoFle , extras);
-        // El importeTotalFinanciamiento actual se recalculará al final, después de actualizar importeTotal
-        // Recalcular importeTotal = (directo + indirecto) * factor
-        const baseTotal = impDir + (updated.importeMaterialinDirecto ?? 0);
-        const factor = updated.factor ?? 1;
-        updated.importeTotal = baseTotal * factor;
+        // Asignamos
+        updated.varios   = nuevos.varios;
+        updated.manoObra = nuevos.manoObra;
+        updated.flete    = nuevos.flete;
 
-        // 7) Si existe factorFinanciamiento previo, recalculamos el Total Financiamiento
-        const factorFin = updated.factorFinanciamiento ?? 1;
-        updated.importeTotalFinanciamiento = updated.importeTotal * factorFin;
+        // Recalculamos el bloque indirecto y el total general
+        const indirecto = nuevos.varios + nuevos.manoObra + nuevos.flete;
+        updated.importeMaterialinDirecto = indirecto;
+        const baseTotal = impDir + indirecto;
+        updated.importeTotal = baseTotal * (updated.factor ?? 1);
 
         return updated;
       }

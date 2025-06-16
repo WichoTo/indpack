@@ -53,7 +53,7 @@ const ParedRow: React.FC<Props> = ({
                 size="small"
                 margin="dense"
                 name="tipoParedes"
-                value={producto.paredes?.tipoParedes ?? ""}
+                value={producto.paredes?.tipoParedes ?? "OSB12"}
                 displayEmpty
                 onChange={(e) => {
                   const nuevoTipo = e.target.value;

@@ -70,7 +70,7 @@ export const routes: RouteConfig[] = [
     name: 'Clientes',
     icon: PeopleIcon,
     rol: ['Administrador','Gerente'],
-    element: React.lazy(() => import('../pages/clientes/ClientesPage')),
+    element: React.lazy(() => import('../pages/clientes/EmpresasPage')),
     hideSucursalSelector: false,
   },
   {
@@ -130,7 +130,7 @@ export const routesNav: RouteConfig[] = [
     name: 'Clientes',
     icon: PeopleIcon,
     rol: ['Administrador','Gerente'],
-    element: React.lazy(() => import('../pages/clientes/ClientesPage')),
+    element: React.lazy(() => import('../pages/clientes/EmpresasPage')),
     hideSucursalSelector: false,
   },
   {

@@ -1,258 +1,311 @@
 // components/costeos/CosteoModal.tsx
-import React, { useEffect, useState } from 'react'
-import { Box, Button, Dialog, DialogActions, DialogContent, FormControl, IconButton, InputLabel, MenuItem, Select, TextField, Typography } from '@mui/material'
-import CloseIcon from '@mui/icons-material/Close'
-import { Cliente, Costeo, ModalStyle,Document } from '../../config/types'
-import {  useFetchClientes } from '../../hooks/useFetchFunctions'
-import Grid from '@mui/material/Grid'
-import DocumentUploadList from '../general/DocumentUploadList'
-import { images } from '../../config/variables'
-import { fechaActual } from '../../hooks/useDateUtils'
-import { Temporal } from '@js-temporal/polyfill'
-import TablaProductos from './TablaProductos'
-import { useListasMateriales } from '../../hooks/useFetchCosteo'
+import React, { useEffect, useState } from 'react';
+import {
+  Autocomplete,
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
+  TextField,
+  Typography
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import { Costeo, Document, Empresa, ModalStyle } from '../../config/types';
+import { useFetchClientes, useFetchEmpresas } from '../../hooks/useFetchFunctions';
+import { images } from '../../config/variables';
+import { fechaActual } from '../../hooks/useDateUtils';
+import { Temporal } from '@js-temporal/polyfill';
+import DocumentUploadList from '../general/DocumentUploadList';
+import TablaProductos from './TablaProductos';
+import { useListasMateriales } from '../../hooks/useFetchCosteo';
 
 interface CosteoModalProps {
-  open: boolean
-  onClose: () => void
-  costeo: Costeo
-  setCosteo: React.Dispatch<React.SetStateAction<Costeo>>
-  sucursalid:string
-  costeos: Costeo[]
-  onSave: (costeo:Costeo) => void;
+  open: boolean;
+  onClose: () => void;
+  costeo: Costeo;
+  setCosteo: React.Dispatch<React.SetStateAction<Costeo>>;
+  sucursalid: string;
+  costeos: Costeo[];
+  onSave: (costeo: Costeo) => void;
 }
 
-const CosteoModal: React.FC<CosteoModalProps> = ({ open, onClose,sucursalid,costeo,setCosteo,costeos ,onSave}) => {
-    const {tiposMateriales } = useListasMateriales()
-    const {clientes} =useFetchClientes(sucursalid)
-    const [selectedCliente,setSelectedCliente]=useState<Cliente|null>(null)
-    const handleChange = (field: keyof Costeo, value: any) => {
-        setCosteo(prev => ({ ...prev, [field]: value }))
-    }
-useEffect(() => {
-  if (!selectedCliente) return;
-  const now = Temporal.Now.plainDateTimeISO('America/Mexico_City');
-  const year2 = String(now.year).slice(-2);
-  const month2 = String(now.month).padStart(2, '0');
-  const prefijo = `COT - ${year2} - ${month2} - `;
-  const contador = costeos.filter(c => c.folio?.startsWith(prefijo)).length;
-  const base = `${prefijo}${contador + 1}`;
-  const nuevoFolio = `${base}-${selectedCliente.empresa}`;
-  setCosteo(prev => ({ ...prev, folio: nuevoFolio }));
-}, [selectedCliente, costeos]);
+const CosteoModal: React.FC<CosteoModalProps> = ({
+  open,
+  onClose,
+  sucursalid,
+  costeo,
+  setCosteo,
+  costeos,
+  onSave
+}) => {
+  const { tiposMateriales } = useListasMateriales();
+  const { empresas } = useFetchEmpresas(sucursalid);
+  const { clientes } = useFetchClientes(sucursalid);
+  const [selectedEmpresa, setSelectedEmpresa] = useState<Empresa | null>(null);
+console.log(clientes)
+console.log(sucursalid)
+  const handleChange = (field: keyof Costeo, value: any) => {
+    setCosteo(prev => ({ ...prev, [field]: value }));
+  };
 
-    useEffect(() => {
-    if (costeo.clienteid && clientes.length > 0) {
-      const c = clientes.find(c => c.id === costeo.clienteid) || null
-      setSelectedCliente(c)
-    }
-  }, [costeo.clienteid, clientes])
-    const handleClienteChange = (clienteid:string)=>{
-        const cliente = clientes.find(c => c.id === clienteid)
-        if (!cliente) return
-        setSelectedCliente(cliente)
-        setCosteo(prev=>({...prev,clienteid:clienteid}))
-        handleGenerarFolioCosteo()
-    }
-    const handleUpload = async (files: FileList): Promise<void> => {
-        const nuevos: Document[] = Array.from(files).map(file => ({
-            id: crypto.randomUUID(),
-            nombre: file.name,
-            file
-        }))
-        setCosteo(prev => ({
-            ...prev,
-            referenciasCosteo: [...(prev.referenciasCosteo || []), ...nuevos]
-        }))
-    }
+  // Regenera folio cuando cambia la empresa
+  useEffect(() => {
+    if (!selectedEmpresa) return;
+    const now = Temporal.Now.plainDateTimeISO('America/Mexico_City');
+    const yy = String(now.year).slice(-2);
+    const mm = String(now.month).padStart(2, '0');
+    const prefix = `COT - ${yy} - ${mm} - `;
+    const count = costeos.filter(c => c.folio?.startsWith(prefix)).length;
+    const folio = `${prefix}${count + 1}-${selectedEmpresa.nombre}`;
+    console.log(folio)
+    setCosteo(prev => ({ ...prev, folio }));
+  }, [selectedEmpresa, costeos, setCosteo]);
 
-    const handleDelete = async (doc: Document): Promise<void> => {
-        setCosteo(prev => ({
-            ...prev,
-            referenciasCosteo: (prev.referenciasCosteo || []).filter(d => d.id !== doc.id)
-        }))
+  const handleEmpresaChange = (empresaid: string) => {
+    const emp = empresas.find(e => e.id === empresaid) || null;
+    setSelectedEmpresa(emp);
+    handleChange('empresaid', empresaid);
+  };
+
+  const handleUpload = async (files: FileList) => {
+    const nuevos: Document[] = Array.from(files).map(file => ({
+      id: crypto.randomUUID(),
+      nombre: file.name,
+      file
+    }));
+    setCosteo(prev => ({
+      ...prev,
+      referenciasCosteo: [...(prev.referenciasCosteo || []), ...nuevos]
+    }));
+  };
+
+  const handleDelete = async (doc: Document) => {
+    setCosteo(prev => ({
+      ...prev,
+      referenciasCosteo: (prev.referenciasCosteo || []).filter(d => d.id !== doc.id)
+    }));
+  };
+
+  const handleClose = () => {
+    onClose();
+    setSelectedEmpresa(null);
+  };
+  const clientesFiltrados = clientes
+    .filter(c => c.empresaid === costeo.empresaid)
+    .map(c => ({ id: c.id, label: c.nombreCompleto }));
+
+  // Al cambiar el cliente seleccionado (o escribir uno nuevo)
+  const handleClienteChange = (
+    _e: any,
+    newValue: { id?: string; label: string } | string
+  ) => {
+    if (typeof newValue === 'string') {
+      // Texto libre: cliente nuevo
+      handleChange('nombreCompleto', newValue);
+      handleChange('clienteid', undefined);
+    } else {
+      // Seleccionado de la lista: cliente existente
+      handleChange('nombreCompleto', newValue.label);
+      handleChange('clienteid', newValue.id);
     }
-    const handleGenerarFolioCosteo = ()=> {
-        const now = Temporal.Now.plainDateTimeISO('America/Mexico_City')
-        const year2 = String(now.year).slice(-2)            
-        const month2 = String(now.month).padStart(2, '0')   
+  };
 
-        const prefijo = `COT - ${year2} - ${month2} - `
-        const contador = costeos.filter(c =>
-            c.folio?.startsWith(prefijo)
-        ).length
-
-        const base = `${prefijo}${contador + 1}`
-        setCosteo(prev => ({ ...prev, folio: `${base}-${selectedCliente?.empresa}`  }))
-        return  `${base}-${selectedCliente?.empresa}` 
-        }
-const handleClose = () => {
-  onClose()
-  setSelectedCliente(null)
-}  
-
+  
+console.log(costeo)
   return (
     <Dialog
       open={open}
-      onClose={(_, reason) => { if (reason === 'backdropClick' || reason === 'escapeKeyDown') { return } handleClose }}
+      onClose={(_, reason) => {
+        if (reason === 'backdropClick' || reason === 'escapeKeyDown') return;
+        handleClose();
+      }}
       disableEscapeKeyDown
       maxWidth={false}
-      PaperProps={{style: ModalStyle}}
+      PaperProps={{ style: ModalStyle }}
     >
       <IconButton
         onClick={handleClose}
         size="small"
-        style={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}
+        sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}
       >
         <CloseIcon />
       </IconButton>
 
       <DialogContent sx={{ p: 2 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 4 }}>
-            <Box>
-                <img src={images.logo} alt="Logo" className="logo" />
-                <Typography variant="body2" sx={{  color: "var(--secondary-color)" }}>Paseo de las Lomas # 6383, Col. Lomas del Colli.</Typography>
-                <Typography variant="body2" sx={{  color: "var(--secondary-color)" }}>Zapopan, Jal. - 45010 CP</Typography>
-                <Typography variant="body2" sx={{  color: "var(--secondary-color)" }}>Tel. +52 (33)-3165-0414</Typography>
-            </Box>
-            <Box sx={{ textAlign: "right" ,mr:5}}>
-                <Typography variant="h6" sx={{ fontWeight: "bold", color: "var(--secondary-color)" }}>
-                    COTIZACIÓN
-                </Typography>
-                <Typography variant="body2" sx={{  color: "var(--secondary-color)" }}>{costeo.folio}</Typography>
-                <Typography variant="body2" sx={{  color: "var(--secondary-color)" }}>{fechaActual}</Typography>
-            </Box>
+        {/* Encabezado */}
+        <Box display="flex" justifyContent="space-between" mb={4}>
+          <Box>
+            <img src={images.logo} alt="Logo" className="logo" />
+            <Typography variant="body2" color="var(--secondary-color)">
+              Paseo de las Lomas # 6383, Col. Lomas del Colli.
+            </Typography>
+            <Typography variant="body2" color="var(--secondary-color)">
+              Zapopan, Jal. - 45010 CP
+            </Typography>
+            <Typography variant="body2" color="var(--secondary-color)">
+              Tel. +52 (33)-3165-0414
+            </Typography>
+          </Box>
+          <Box textAlign="right" mr={5}>
+            <Typography variant="h6" fontWeight="bold" color="var(--secondary-color)">
+              COTIZACIÓN
+            </Typography>
+            <Typography variant="body2" color="var(--secondary-color)">
+              {costeo.folio}
+            </Typography>
+            <Typography variant="body2" color="var(--secondary-color)">
+              {fechaActual}
+            </Typography>
+          </Box>
         </Box>
-        <Box sx={{ display: 'center', gap: 2 }}>
-          <Grid>
-            <FormControl fullWidth
-              size="small" margin="normal">
-              <InputLabel id="cliente-select-label">Cliente</InputLabel>
+
+        {/* Dos columnas: Empresa/Cliente/Correo/Celular y Dirección/Envio/Fecha/Destino */}
+        <Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '1fr 1fr' }} gap={2}>
+          {/* Columna Izquierda */}
+          <Box display="grid" gridTemplateColumns="1fr" gap={2}>
+            <FormControl fullWidth size="small" margin="normal">
+              <InputLabel id="empresa-select-label">Empresa</InputLabel>
               <Select
-                labelId="cliente-select-label"
-                value={selectedCliente?.id || ''}
-                label="Cliente"
-                onChange={(e)=>handleClienteChange(e.target.value)}
+                labelId="empresa-select-label"
+                label="Empresa"
+                value={costeo.empresaid??""}
+                onChange={e => handleEmpresaChange(e.target.value)}
               >
-                {clientes.map(c => (
-                  <MenuItem key={c.id} value={c.id}>
-                    {c.nombreCompleto}
+                {empresas.map(e => (
+                  <MenuItem key={e.id} value={e.id}>
+                    {e.nombre}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
-
+             <Autocomplete
+                freeSolo
+                disableClearable
+                options={clientesFiltrados}
+                getOptionLabel={opt =>
+                  typeof opt === 'string' ? opt : opt.label
+                }
+                value={
+                  { id: costeo.clienteid, label: costeo.nombreCompleto }
+                }
+                onChange={handleClienteChange}
+                onInputChange={(_e, input) => {
+                  // Para que al escribir vaya cambiando el nombre
+                  handleChange('nombreCompleto', input);
+                  handleChange('clienteid', undefined);
+                }}
+                renderInput={params => (
+                  <TextField
+                    {...params}
+                    label="Cliente"
+                    size="small"
+                    margin="normal"
+                    fullWidth
+                  />
+                )}
+              />
             <TextField
-              fullWidth
-              size="small"
-              margin="normal"
-              label="Celular"
-              value={selectedCliente?.celular || ''}
-            />
-            <TextField
-              fullWidth
-              size="small"
-              margin="normal"
-              label="Empresa"
-              value={selectedCliente?.empresa || ''}
-            />
-            <TextField
-              fullWidth
-              size="small"
-              margin="normal"
+              fullWidth size="small" margin="normal"
               label="Correo"
-              value={selectedCliente?.correoElectronico || ''}
+              value={costeo.correoElectronico}
+              onChange={e => handleChange('correoElectronico', e.target.value)}
             />
-          </Grid>
-
-          {/* Columna 2 */}
-          <Grid>
             <TextField
-              fullWidth
-              size="small"
-              margin="normal"
+              fullWidth size="small" margin="normal"
+              label="Celular"
+              value={costeo.celular}
+              onChange={e => handleChange('celular', e.target.value)}
+            />
+          </Box>
+
+          {/* Columna Derecha */}
+          <Box display="grid" gridTemplateColumns="1fr" gap={2}>
+            <TextField
+              fullWidth size="small" margin="normal"
               label="Dirección Destino"
               value={costeo.direccion || ''}
-              onChange={((e)=>handleChange("direccion",e.target.value))}
+              onChange={e => handleChange('direccion', e.target.value)}
             />
             <TextField
-              fullWidth
-              size="small"
-              margin="normal"
+              fullWidth size="small" margin="normal"
               label="Forma Envío"
               value={costeo.formaEnvio || ''}
-              onChange={((e)=>handleChange("formaEnvio",e.target.value))}
+              onChange={e => handleChange('formaEnvio', e.target.value)}
             />
             <TextField
-              fullWidth
-              size="small"
-              margin="normal"
+              fullWidth size="small" margin="normal"
               label="Fecha Envío"
               type="date"
               InputLabelProps={{ shrink: true }}
               value={costeo.fechaEnvio || ''}
-              onChange={((e)=>handleChange("fechaEnvio",e.target.value))}
+              onChange={e => handleChange('fechaEnvio', e.target.value)}
             />
             <FormControl fullWidth size="small" margin="normal">
               <InputLabel id="destino-select-label">Destino</InputLabel>
               <Select
                 labelId="destino-select-label"
                 label="Destino"
-                name="destino"
                 value={costeo.destino || ''}
-                onChange={(e) => handleChange("destino", e.target.value)}
+                onChange={e => handleChange('destino', e.target.value)}
               >
                 <MenuItem value="">Selecciona destino</MenuItem>
                 <MenuItem value="Nacional">Nacional</MenuItem>
                 <MenuItem value="Internacional">Internacional</MenuItem>
               </Select>
             </FormControl>
-
-          </Grid>
+          </Box>
         </Box>
-         <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField
-                    fullWidth
-                    size="small"
-                    margin="normal"
-                    label="Proyecto"
-                    value={costeo.tituloPedido || ''}
-                    onChange={e => handleChange("tituloPedido", e.target.value)}
-                />
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-                    <TextField
-                        fullWidth
-                        size="small"
-                        margin="normal"
-                        label="Descripcion"
-                        value={costeo.descripcion || ''}
-                        onChange={e => handleChange("descripcion", e.target.value)}
-                    />
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-                    <DocumentUploadList
-                        documents={costeo.referenciasCosteo??[]}
-                        onUpload={handleUpload}
-                        onDelete={handleDelete}
-                        maxFiles={10}
-                    />
-            </Box>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-                <TablaProductos costeo={costeo} setCosteo={setCosteo} sucursalid={sucursalid} tiposMateriales={tiposMateriales}/>
-            </Box>
-        </DialogContent>
-        <DialogActions sx={{ px: 2, pb: 2 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={()=>onSave(costeo)}
-                >
-                  Guardar Costeo
-                </Button>
-              </DialogActions>
-        </Dialog>
-  )
-}
 
-export default CosteoModal
+        {/* Proyecto y Descripción */}
+        <Box display="flex" gap={1} mt={2}>
+          <TextField
+            fullWidth size="small" margin="normal"
+            label="Proyecto"
+            value={costeo.tituloPedido || ''}
+            onChange={e => handleChange('tituloPedido', e.target.value)}
+          />
+        </Box>
+        <Box display="flex" gap={1}>
+          <TextField
+            fullWidth size="small" margin="normal"
+            label="Descripción"
+            value={costeo.descripcion || ''}
+            onChange={e => handleChange('descripcion', e.target.value)}
+          />
+        </Box>
+
+        {/* Documentos y tabla de productos */}
+        <Box mt={2}>
+          <DocumentUploadList
+            documents={costeo.referenciasCosteo || []}
+            onUpload={handleUpload}
+            onDelete={handleDelete}
+            maxFiles={10}
+          />
+        </Box>
+        <Box mt={2}>
+          <TablaProductos
+            costeo={costeo}
+            setCosteo={setCosteo}
+            sucursalid={sucursalid}
+            tiposMateriales={tiposMateriales}
+          />
+        </Box>
+      </DialogContent>
+
+      <DialogActions sx={{ px: 2, pb: 2 }}>
+        <Button variant="contained" color="primary" onClick={() => onSave(costeo)}>
+          Guardar Costeo
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+export default CosteoModal;
