@@ -288,42 +288,7 @@ const actualizarPreciosTotales = () => {
 
                   {/* COLUMNA 3: Precio Unitario */}
                   <TableCell align="right">
-                    <Box sx={{ width: 90, marginLeft: 'auto' }}>
-                      <TextField
-                        size="small"
-                        type="number"
-                        inputProps={{ min: 0, step: '0.01' }}
-                        value={total.precioUnitario}
-                        onChange={(e) => {
-                          const nuevoPrecio = parseFloat(e.target.value) || 0;
-                          // 1) Actualiza el precio unitario y el total en el producto correspondiente
-                          setPedidoActivo(prev => {
-                            if (!prev) return prev;
-                            return {
-                              ...prev,
-                              productos: prev.productos.map(p => {
-                                if (p.id !== producto.id) return p;
-                                const totalesActualizados = p.totales.map(t => {
-                                  if (t.tipo !== total.tipo) return t;
-                                  const factor = t.medida && t.medida > 0 ? t.medida : t.cantidad!;
-                                  return {
-                                    ...t,
-                                    precioUnitario: nuevoPrecio,
-                                    precioTotal: Math.round(nuevoPrecio * factor * 100) / 100,
-                                  };
-                                });
-                                return {
-                                  ...p,
-                                  totales: totalesActualizados,
-                                };
-                              }),
-                            };
-                          });
-                          // 2) Recalcula importes generales
-                          handleCalcularTotales(producto.id, setPedidoActivo, materiales);
-                        }}
-                      />
-                    </Box>
+                    {formatoMoneda(total.precioUnitario! )}
                   </TableCell>
 
                   {/* COLUMNA 4: Costo */}

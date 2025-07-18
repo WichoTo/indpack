@@ -14,13 +14,15 @@ import {
 } from '@mui/material'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import { Costeo } from '../../config/types'
-import { actualizarCosteo,  useFetchCosteos, useFetchEmpresas } from '../../hooks/useFetchFunctions'
+import { actualizarCosteo,  eliminarCosteo,  useFetchCosteos, useFetchEmpresas } from '../../hooks/useFetchFunctions'
 import { useAuthRole } from '../../config/auth'
 import Spinner from '../../components/general/Spinner'
 import { useSucursal } from '../../config/context/SucursalContext'
 import CosteoModal from '../../components/costeos/CosteoModal'
 import { fechaActual } from '../../hooks/useDateUtils'
-
+import { useAutoSaveCosteo } from '../../hooks/useFetchCosteo'
+import ConfirmDialog from '../../components/general/DialogComponent'
+import DeleteIcon from '@mui/icons-material/Delete'; 
 const PedidosPage: React.FC = () => {
   const { user } = useAuthRole()
   const { selectedSucursal } = useSucursal()
@@ -34,7 +36,6 @@ const PedidosPage: React.FC = () => {
   id: crypto.randomUUID(),
   folio: '',
   userid,
-  empresaid: '',
   nombreCompleto: '',
   correoElectronico: '',
   celular: '',
@@ -49,7 +50,9 @@ const PedidosPage: React.FC = () => {
   descripcion: '',
   estado: '',
   productos: [],
-  referenciasCosteo: [],
+  referenciasFormatoMedidas: [],
+  referenciasComunicaciones: [],
+  referenciasImagenes: [],
 });
 
 
@@ -59,6 +62,10 @@ const PedidosPage: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false)
   const [costeo, setCosteo] = useState<Costeo>(makeNewCosteo())
   const [loading, setLoading] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [costeoAEliminar, setCosteoAEliminar] = useState<Costeo | null>(null)
+
+  useAutoSaveCosteo(modalOpen ? costeo : undefined, modalOpen);
 
   const handleAdd = () => {
     setModalOpen(true)
@@ -89,6 +96,21 @@ const PedidosPage: React.FC = () => {
     setModalOpen(false)
     setLoading(false)
   }
+const handleConfirmDelete = async () => {
+  
+  if (!costeoAEliminar) return;
+  setLoading(true)
+  try {
+    console.log(costeoAEliminar)
+    await eliminarCosteo(costeoAEliminar.id)
+    setCosteoAEliminar(null)
+    setConfirmOpen(false)
+  } catch (e: any) {
+    alert('Error al eliminar: ' + (e.message || e));
+  } finally {
+    setLoading(false)
+  }
+}
 
   return (
     <>
@@ -130,6 +152,15 @@ const PedidosPage: React.FC = () => {
                       <IconButton onClick={() => handleEdit(c)}>
                         <VisibilityIcon />
                       </IconButton>
+                      <IconButton
+                        color="error"
+                        onClick={() => {
+                          setCosteoAEliminar(c); // Guarda el costeo a eliminar
+                          setConfirmOpen(true);  // Abre el diálogo
+                        }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
                     </TableCell>
                   </TableRow>
                 )
@@ -138,7 +169,13 @@ const PedidosPage: React.FC = () => {
           </Table>
         </TableContainer>
 
-
+        <ConfirmDialog
+          open={confirmOpen}
+          onClose={() => setConfirmOpen(false)}
+          onConfirm={handleConfirmDelete}
+          title="¿Eliminar costeo?"
+          message={`¿Estás seguro de que deseas eliminar el costeo${costeoAEliminar ? ` de ${costeoAEliminar.nombreCompleto || 'sin nombre'}` : ''}? Esta acción no se puede deshacer.`}
+        />
         <CosteoModal
           onClose={handleClose}
           open={modalOpen}

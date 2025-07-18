@@ -1,4 +1,3 @@
-// components/costeos/ImportesRow.tsx
 import React from 'react';
 import {
   TableContainer,
@@ -9,11 +8,10 @@ import {
   TableCell,
   TableBody,
   TextField,
-  InputAdornment
 } from '@mui/material';
-import CurrencyFormatCustom from '../general/InputMoneda';
+import InputMoneda from '../general/InputMoneda';
+import InputPorcentaje from '../general/InputPorcentaje';
 import { Costeo, Producto, MaterialSuc } from '../../config/types';
-import { formatoMoneda } from '../../hooks/useUtilsFunctions';
 
 interface Props {
   producto: Producto;
@@ -21,88 +19,94 @@ interface Props {
   materiales: MaterialSuc[];
 }
 
+const round = (n: number) => Math.round(n * 100) / 100;
+
 const ImportesRow: React.FC<Props> = ({ producto, setCosteo }) => {
-  // 1) Valores base
-  const impDirecto   = Number(producto.importeMaterialDirecto ?? 0);
-  const pctVarios    = producto.variosPercent   ?? 15;
-  const pctMO        = producto.manoObraPercent ?? 50;
-  const pctFlete     = producto.fletePercent    ?? 15;
-  const impVarios    = producto.varios   ?? impDirecto * (pctVarios  / 100);
-  const impMO        = producto.manoObra ?? impDirecto * (pctMO      / 100);
-  const impFlete     = producto.flete    ?? impDirecto * (pctFlete   / 100);
-  const impExtras    = producto.extras   ?? 0;
+  // SIEMPRE lee de producto.* y solo calcula si está indefinido
+  const impDirecto = Number(producto.importeMaterialDirecto ?? 0);
+
+  const pctVarios  = Number(producto.variosPercent ?? 15);
+  const pctMO      = Number(producto.manoObraPercent ?? 50);
+  const pctFlete   = Number(producto.fletePercent ?? 15);
+
+  // Solo se recalculan si NO existen como valor editado por el usuario
+  const impVarios  = producto.varios !== undefined ? round(Number(producto.varios)) : round(impDirecto * (pctVarios / 100));
+  const impMO      = producto.manoObra !== undefined ? round(Number(producto.manoObra)) : round(impDirecto * (pctMO / 100));
+  const impFlete   = producto.flete !== undefined ? round(Number(producto.flete)) : round(impDirecto * (pctFlete / 100));
+  const impExtras  = round(
+  Number(producto.extras        ?? 0) 
+);
+  const factor     = Number(producto.factor ?? 1);
+  const factorFin  = Number(producto.factorFinanciamiento ?? 1);
+
   const impIndirecto = impVarios + impMO + impFlete + impExtras;
-  const impTotal     = (impDirecto + impIndirecto) * (producto.factor ?? 1);
-  const impFin       = impTotal * (producto.factorFinanciamiento ?? 1);
+  const impTotal     = round((impDirecto + impIndirecto) * factor);
+  const impFin       = round(impTotal * factorFin);
 
-  // 2) Helper para recalcular indirectos y totales
-  const recalcAll = (p: Partial<Producto>) => {
-    const v        = p.varios      ?? impVarios;
-    const m        = p.manoObra    ?? impMO;
-    const f        = p.flete       ?? impFlete;
-    const e        = p.extras      ?? impExtras;
-    const indirect = v + m + f + e;
-    const total    = (impDirecto + indirect) * (p.factor ?? producto.factor ?? 1);
-    return {
-      importeMaterialinDirecto: indirect,
-      importeTotal: total,
-      importeTotalFinanciamiento: total * (p.factorFinanciamiento ?? producto.factorFinanciamiento ?? 1)
-    };
-  };
+  const pctSobreTotal = (imp: number) =>
+    impTotal ? `${((imp / impTotal) * 100).toFixed(2)}%` : '0.00%';
 
-  // 3) Handlers de cambio
+  // Si cambia el porcentaje, sobrescribe ambos valores (redondeados)
   const handlePctChange = (
     field: 'variosPercent' | 'manoObraPercent' | 'fletePercent',
     raw: string
   ) => {
     const pct = parseFloat(raw) || 0;
+    const impField = field.replace('Percent', '') as 'varios' | 'manoObra' | 'flete';
+    const val = round(impDirecto * (pct / 100));
     setCosteo(prev => ({
       ...prev,
-      productos: prev.productos.map(p => {
-        if (p.id !== producto.id) return p;
-        const keyImp = (field.replace('Percent','')) as 'varios'|'manoObra'|'flete';
-        const newImp  = impDirecto * (pct / 100);
-        return {
-          ...p,
-          [field]: pct,
-          [keyImp]: newImp,
-          ...recalcAll({ [keyImp]: newImp })
-        };
-      })
+      productos: prev.productos.map(p =>
+        p.id !== producto.id
+          ? p
+          : {
+              ...p,
+              [field]: pct,
+              [impField]: val,
+            }
+      ),
     }));
   };
 
   const handleImpChange = (
-    field: 'varios' | 'manoObra' | 'flete' | 'extras' | 'factor' | 'factorFinanciamiento',
-    raw: string
-  ) => {
-    const val = parseFloat(raw) || 0;
+  field: 'varios' | 'manoObra' | 'flete' | 'extras' | 'factor' | 'factorFinanciamiento',
+  raw: string
+) => {
+  const val = Math.round((parseFloat(raw) || 0) * 100) / 100;
+  if (['varios', 'manoObra', 'flete'].includes(field)) {
+    const pctField = (field + 'Percent') as 'variosPercent' | 'manoObraPercent' | 'fletePercent';
+    const pct = impDirecto ? Math.round((val / impDirecto) * 10000) / 100 : 0;
     setCosteo(prev => ({
       ...prev,
-      productos: prev.productos.map(p => {
-        if (p.id !== producto.id) return p;
-        const updated: any = { ...p, [field]: val };
-        if (['varios','manoObra','flete'].includes(field)) {
-          const pctKey = (field + 'Percent') as 'variosPercent'|'manoObraPercent'|'fletePercent';
-          updated[pctKey] = impDirecto ? (val / impDirecto) * 100 : 0;
-        }
-        return {
-          ...updated,
-          ...recalcAll(updated)
-        };
-      })
+      productos: prev.productos.map(p =>
+        p.id !== producto.id
+          ? p
+          : {
+              ...p,
+              [field]: val,
+              [pctField]: pct,
+            }
+      ),
     }));
-  };
+  } else {
+    setCosteo(prev => ({
+      ...prev,
+      productos: prev.productos.map(p =>
+        p.id !== producto.id ? p : { ...p, [field]: val }
+      ),
+    }));
+  }
+};
 
-  // % sobre total
-  const pctSobreTotal = (imp: number) =>
-    impTotal ? `${((imp / impTotal) * 100).toFixed(2)}%` : '0.00%';
 
-  // Estilos comunes para inputs
-  const inputSx = { 
+  // Common input styling
+  const inputSx = {
     '& .MuiInputBase-input': {
       textAlign: 'right',
-      fontVariantNumeric: 'tabular-nums'
+      fontVariantNumeric: 'tabular-nums',
+      fontSize: 18,
+      minWidth: 80,
+      p: '7px 8px'
     }
   };
 
@@ -121,17 +125,19 @@ const ImportesRow: React.FC<Props> = ({ producto, setCosteo }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-
           {/* Material Directo */}
           <TableRow>
             <TableCell>Material Directo</TableCell>
             <TableCell />
             <TableCell align="right">
-              <CurrencyFormatCustom
+              <TextField
                 name="importeMaterialDirecto"
-                value={impDirecto.toFixed(2)}
+                value={impDirecto}
+                InputProps={{ inputComponent: InputMoneda as any }}
+                size="small"
+                fullWidth
+                sx={inputSx}
                 disabled
-                style={{ width: '100%' }}
               />
             </TableCell>
             <TableCell align="right">
@@ -145,24 +151,23 @@ const ImportesRow: React.FC<Props> = ({ producto, setCosteo }) => {
             <TableCell align="right">
               <TextField
                 name="variosPercent"
-                size="small"
-                type="number"
-                value={pctVarios.toFixed(2)}
+                value={pctVarios}
                 onChange={e => handlePctChange('variosPercent', e.target.value)}
-                InputProps={{
-                  endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                  inputProps: { step: '0.01' }
-                }}
-                sx={inputSx}
+                InputProps={{ inputComponent: InputPorcentaje as any }}
+                size="small"
                 fullWidth
+                sx={inputSx}
               />
             </TableCell>
             <TableCell align="right">
-              <CurrencyFormatCustom
+              <TextField
                 name="varios"
-                value={impVarios.toFixed(2)}
+                value={impVarios}
                 onChange={e => handleImpChange('varios', e.target.value)}
-                style={{ width: '100%' }}
+                InputProps={{ inputComponent: InputMoneda as any }}
+                size="small"
+                fullWidth
+                sx={inputSx}
               />
             </TableCell>
             <TableCell align="right">
@@ -176,24 +181,23 @@ const ImportesRow: React.FC<Props> = ({ producto, setCosteo }) => {
             <TableCell align="right">
               <TextField
                 name="manoObraPercent"
-                size="small"
-                type="number"
-                value={pctMO.toFixed(2)}
+                value={pctMO}
                 onChange={e => handlePctChange('manoObraPercent', e.target.value)}
-                InputProps={{
-                  endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                  inputProps: { step: '0.01' }
-                }}
-                sx={inputSx}
+                InputProps={{ inputComponent: InputPorcentaje as any }}
+                size="small"
                 fullWidth
+                sx={inputSx}
               />
             </TableCell>
             <TableCell align="right">
-              <CurrencyFormatCustom
+              <TextField
                 name="manoObra"
-                value={impMO.toFixed(2)}
+                value={impMO}
                 onChange={e => handleImpChange('manoObra', e.target.value)}
-                style={{ width: '100%' }}
+                InputProps={{ inputComponent: InputMoneda as any }}
+                size="small"
+                fullWidth
+                sx={inputSx}
               />
             </TableCell>
             <TableCell align="right">
@@ -206,11 +210,14 @@ const ImportesRow: React.FC<Props> = ({ producto, setCosteo }) => {
             <TableCell>Extras</TableCell>
             <TableCell />
             <TableCell align="right">
-              <CurrencyFormatCustom
+              <TextField
                 name="extras"
-                value={impExtras.toFixed(2)}
+                value={impExtras}
                 onChange={e => handleImpChange('extras', e.target.value)}
-                style={{ width: '100%' }}
+                InputProps={{ inputComponent: InputMoneda as any }}
+                size="small"
+                fullWidth
+                sx={inputSx}
               />
             </TableCell>
             <TableCell align="right">
@@ -224,24 +231,23 @@ const ImportesRow: React.FC<Props> = ({ producto, setCosteo }) => {
             <TableCell align="right">
               <TextField
                 name="fletePercent"
-                size="small"
-                type="number"
-                value={pctFlete.toFixed(2)}
+                value={pctFlete}
                 onChange={e => handlePctChange('fletePercent', e.target.value)}
-                InputProps={{
-                  endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                  inputProps: { step: '0.01' }
-                }}
-                sx={inputSx}
+                InputProps={{ inputComponent: InputPorcentaje as any }}
+                size="small"
                 fullWidth
+                sx={inputSx}
               />
             </TableCell>
             <TableCell align="right">
-              <CurrencyFormatCustom
+              <TextField
                 name="flete"
-                value={impFlete.toFixed(2)}
+                value={impFlete}
                 onChange={e => handleImpChange('flete', e.target.value)}
-                style={{ width: '100%' }}
+                InputProps={{ inputComponent: InputMoneda as any }}
+                size="small"
+                fullWidth
+                sx={inputSx}
               />
             </TableCell>
             <TableCell align="right">
@@ -254,11 +260,14 @@ const ImportesRow: React.FC<Props> = ({ producto, setCosteo }) => {
             <TableCell>Directo e Indirecto</TableCell>
             <TableCell />
             <TableCell align="right">
-              <CurrencyFormatCustom
+              <TextField
                 name="importeDirectoIndirecto"
-                value={(impDirecto + impIndirecto).toFixed(2)}
+                value={impDirecto + impIndirecto}
+                InputProps={{ inputComponent: InputMoneda as any }}
+                size="small"
+                fullWidth
+                sx={inputSx}
                 disabled
-                style={{ width: '100%' }}
               />
             </TableCell>
             <TableCell align="right">
@@ -272,21 +281,23 @@ const ImportesRow: React.FC<Props> = ({ producto, setCosteo }) => {
             <TableCell align="right">
               <TextField
                 name="factor"
-                size="small"
-                type="number"
-                value={producto.factor?.toFixed(2) ?? '1.00'}
+                value={factor}
                 onChange={e => handleImpChange('factor', e.target.value)}
-                inputProps={{ step: '0.01' }}
-                sx={inputSx}
+                InputProps={{ inputComponent: InputPorcentaje as any }}
+                size="small"
                 fullWidth
+                sx={inputSx}
               />
             </TableCell>
             <TableCell align="right">
-              <CurrencyFormatCustom
+              <TextField
                 name="importeTotal"
-                value={formatoMoneda(impTotal)}
+                value={impTotal}
+                InputProps={{ inputComponent: InputMoneda as any }}
+                size="small"
+                fullWidth
+                sx={inputSx}
                 disabled
-                style={{ width: '100%' }}
               />
             </TableCell>
             <TableCell align="right">
@@ -300,21 +311,23 @@ const ImportesRow: React.FC<Props> = ({ producto, setCosteo }) => {
             <TableCell align="right">
               <TextField
                 name="factorFinanciamiento"
-                size="small"
-                type="number"
-                value={(producto.factorFinanciamiento ?? 1).toFixed(2)}
+                value={factorFin}
                 onChange={e => handleImpChange('factorFinanciamiento', e.target.value)}
-                inputProps={{ step: '0.01' }}
-                sx={inputSx}
+                InputProps={{ inputComponent: InputPorcentaje as any }}
+                size="small"
                 fullWidth
+                sx={inputSx}
               />
             </TableCell>
             <TableCell align="right">
-              <CurrencyFormatCustom
+              <TextField
                 name="importeTotalFinanciamiento"
-                value={formatoMoneda(impFin)}
+                value={impFin}
+                InputProps={{ inputComponent: InputMoneda as any }}
+                size="small"
+                fullWidth
+                sx={inputSx}
                 disabled
-                style={{ width: '100%' }}
               />
             </TableCell>
             <TableCell align="right">

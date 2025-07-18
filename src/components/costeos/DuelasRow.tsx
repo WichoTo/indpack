@@ -198,9 +198,56 @@ const DuelasRow: React.FC<Props> = ({
                 label="Cant Postes"
                 value={producto?.duelas?.postes?.[1]?.cantidad ?? 0}
                 onChange={(e) => {
-                  handleDuelasChange(producto?.id ?? "", "postes", "cantidad", 1, Number(e.target.value), setCosteo);
-                  if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
-                }}
+                const nuevaCantidad = Number(e.target.value);
+
+                setCosteo((prevPedido) => {
+                  if (!prevPedido) return prevPedido;
+                  return {
+                    ...prevPedido,
+                    productos: prevPedido.productos.map((prod) => {
+                      if (prod.id !== producto.id) return prod;
+
+                      // Asegura que duelas.postes[1] exista
+                      const nuevosPostes = [...(prod.duelas?.postes || [])];
+                      while (nuevosPostes.length < 2) nuevosPostes.push({ cantidad: 0, medida: 0 });
+                      nuevosPostes[1] = {
+                        ...nuevosPostes[1],
+                        cantidad: nuevaCantidad,
+                      };
+
+                      // Asegura que duelate siempre tenga número
+                      const duelateMedida = (
+                        prod.duelas?.duelate?.postes?.medida !== undefined
+                          ? prod.duelas.duelate.postes.medida
+                          : 0
+                      );
+
+                      const nuevasDuelas = {
+                        ...prod.duelas,
+                        postes: nuevosPostes,
+                        duelate: {
+                          postes: {
+                            cantidad: Math.max(1, Math.round(nuevaCantidad / 2)),
+                            medida: duelateMedida,
+                          },
+                          largueros: {
+                            cantidad: prod.duelas?.duelate?.largueros?.cantidad ?? 0,
+                            medida: prod.duelas?.duelate?.largueros?.medida ?? 0,
+                          },
+                        },
+                      };
+
+                      return {
+                        ...prod,
+                        duelas: nuevasDuelas,
+                      };
+                    }),
+                  };
+                });
+
+                if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
+              }}
+
               />
           </Box>
           <Box>

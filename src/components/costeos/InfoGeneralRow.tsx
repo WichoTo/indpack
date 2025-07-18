@@ -12,7 +12,7 @@ import {
   Document,
   MaterialSuc,
 } from '../../config/types';
-import { actualizarCodigoEnPedido, handleImporteChange, handleProductoChange } from '../../hooks/useFetchCosteo';
+import { actualizarCodigoEnPedido, calcularDuelas, handleImporteChange, handleMedidasProductoChange, handleProductoChange, recalcularGrosor } from '../../hooks/useFetchCosteo';
 import DocumentUploadList from '../general/DocumentUploadList';
 
 interface Props {
@@ -58,16 +58,50 @@ const InfoGeneralRow: React.FC<Props> = ({
             }}/>
         </Box>
         <Box>
-            <Select
+        <Select
             variant="outlined"
             size="small"
             name="tipoEquipo"
             value={producto.tipoEquipo || ""}
-            onChange={(event) => handleProductoChange(event.target.value,"tipoEquipo", setCosteo, producto?.id ?? "",materiales)}
+            onChange={event => {
+                const nuevoTipo = event.target.value as "Caja" | "Tarima" | "Huacal";
+
+                // 1) Actualizamos tipoEquipo y grosor juntos
+                setCosteo(prev => {
+                if (!prev) return prev;
+                return {
+                    ...prev,
+                    productos: prev.productos.map(p => {
+                    if (p.id !== producto.id) return p;
+                    const newGrosor = recalcularGrosor({ ...p, tipoEquipo: nuevoTipo });
+                    return {
+                        ...p,
+                        tipoEquipo: nuevoTipo,
+                        grosor: newGrosor,
+                    };
+                    }),
+                };
+                });
+
+                // 2) Recalculamos totales (via handleProductoChange)
+                handleProductoChange(
+                nuevoTipo,
+                "tipoEquipo",
+                setCosteo,
+                producto.id,
+                materiales
+                );
+                handleMedidasProductoChange(producto.id, setCosteo, materiales)
+
+                // 3) Y ahora recalculamos las duelas (postes/largueros)
+                calcularDuelas(producto.id, setCosteo, materiales);
+            }}
             displayEmpty
             fullWidth
             >
-            <MenuItem value="">Selecciona un tipo</MenuItem>
+            <MenuItem value="">
+                <em>Selecciona un tipo</em>
+            </MenuItem>
             <MenuItem value="Caja">Caja</MenuItem>
             <MenuItem value="Tarima">Tarima</MenuItem>
             <MenuItem value="Huacal">Huacal</MenuItem>

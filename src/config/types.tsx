@@ -109,7 +109,7 @@ export interface Costeo {
   id: string;
   folio: string;
   userid: string;
-  empresaid: string;
+  empresaid?: string;
   nombreCompleto:string;
   clienteid?:string;
   correoElectronico:string;
@@ -126,7 +126,10 @@ export interface Costeo {
   fechaCreacion: string;
   
   productos: Producto[];
-  referenciasCosteo?:Document[];
+  
+  referenciasFormatoMedidas?: Document[];
+  referenciasComunicaciones?: Document[];
+  referenciasImagenes?: Document[];
 }
 
 
@@ -175,7 +178,7 @@ export interface Producto {
   precioSENAL?: number;
   importeSENAL?: number;
 
-  importeBolsaAntihumedad?: number;
+  bolsaAntihumedad?: BolsaAntihumedad;
   importeTermo?: number;
 
   importeMaterialDirecto?: number;
@@ -215,7 +218,19 @@ export interface Producto {
   [key: string]: any;
 
 }
-
+export interface BolsaAntihumedad{
+  cantidad:number
+  cantidadBase:number
+  cantidadParedes:number
+  largobase:number
+  anchobase:number
+  indicebase:number
+  largoparedes:number
+  altoparedes:number
+  indiceparedes:number
+  precioUnitario:number
+  importeTotal:number
+}
 
 export interface PolinAbajo {
     cantidad: number;
@@ -253,6 +268,8 @@ export type Corral = CorralGeneral | CorralTopes;
 export interface MaderaExtra {
   tipoPolin: string;
   medida: number;
+  formulaMedida?: string;
+
 };
 export interface Porterias  {
   cantidad: number;

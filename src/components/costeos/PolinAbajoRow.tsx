@@ -1,11 +1,12 @@
 import React from 'react';
 import {  TextField, FormControl, InputLabel, Select, MenuItem, IconButton, Box } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { Costeo, PolinAbajo, Material } from '../../config/types';
+import { Costeo, PolinAbajo, Material, Producto } from '../../config/types';
 import { handleCalcularTotales } from '../../hooks/useFetchCosteo';
 
 interface PolinAbajoRowProps {
   polin: PolinAbajo;
+  producto:Producto;
   index: number;
   productoId: string;
   setCosteo: React.Dispatch<React.SetStateAction<Costeo>>;
@@ -20,6 +21,7 @@ const PolinAbajoRow: React.FC<PolinAbajoRowProps> = ({
   setCosteo,
   materiales,
   tiposMateriales,
+  producto
 }) => {
   const updateField = (
     field: keyof PolinAbajo,
@@ -61,6 +63,20 @@ const PolinAbajoRow: React.FC<PolinAbajoRowProps> = ({
     });
     handleCalcularTotales(productoId, setCosteo, materiales);
   };
+function isTipoPolinPermitido(
+  tipo: string,
+  largoEmpaque: number
+): boolean {
+  // Pasamos a mayúsculas y quitamos espacios
+  const tipoPolin = tipo.replace(/\s+/g, '').toUpperCase();
+
+  // Si el largo es > 420, no permitimos 4X2 ni 4X3 (incluye P4X2,  P4X3, etc.)
+  if (largoEmpaque > 420 && /4X(2|3)$/i.test(tipoPolin)) {
+    return false;
+  }
+
+  return true;
+}
 
   return (
     <Box key={"pa"+index} display="grid" gridTemplateColumns={{ xs: '1fr',  sm: '1fr 1fr 1fr 1fr '}} gap={2} mb={1} alignItems="center">
@@ -86,14 +102,17 @@ const PolinAbajoRow: React.FC<PolinAbajoRowProps> = ({
                 onChange={e => updateField('tipo', e.target.value as string)}
             >
                 <MenuItem value=""><em>Selecciona un tipo</em></MenuItem>
-                {tiposMateriales.Polines.map((rawTipo) => {
-                const tipo = rawTipo.trim();
-                return (
-                    <MenuItem key={tipo} value={tipo}>
-                    {tipo}
-                    </MenuItem>
-                );
-                })}
+                {tiposMateriales.Polines
+                  .filter(tipo => isTipoPolinPermitido(tipo, producto.largoEmpaque))
+                  .map((rawTipo) => {
+                    const tipo = rawTipo.trim();
+                    return (
+                      <MenuItem key={tipo} value={tipo}>
+                        {tipo}
+                      </MenuItem>
+                    );
+                  })
+                }
             </Select>
             </FormControl>
         </Box>

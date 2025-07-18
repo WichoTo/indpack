@@ -8,7 +8,7 @@ import {
 } from '@mui/material';
 import AddIcon from "@mui/icons-material/Add";
 import { Costeo, Producto, Material } from '../../config/types';
-import { alturasPorTipo, calcularTipoPolin, handleCalcularTotales } from '../../hooks/useFetchCosteo';
+import { alturasPorTipo, calcularTipoPolin, calcularTipoPolinAbajoPorPeso, handleCalcularTotales } from '../../hooks/useFetchCosteo';
 import PolinFijacionRow from './PolinFijacionRow';
 
 interface Props {
@@ -26,32 +26,53 @@ const PolinesFijacionFullRow: React.FC<Props> = ({
   tiposMateriales,
 }) => {
   const agregarPolinFijacion = () => {
-    if (!producto.id) return;
-    setCosteo(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        productos: prev.productos.map(prod =>
-          prod.id === producto.id
-            ? {
-                ...prod,
-                polinesFijacion: [
-                  ...(prod.polinesFijacion ?? []),
-                  {
-                    // si no tienes id en el tipo, usaremos índice como key
-                    tipo: calcularTipoPolin(prod.peso ?? 0, materiales),
-                    cantidad: 1,
-                    medida: prod.anchoEmpaque
-                  }
-                ]
-              }
-            : prod
-        )
-      };
-    });
-    handleCalcularTotales(producto.id, setCosteo, materiales);
-  };
+  if (!producto.id) return;
+  setCosteo(prev => {
+    if (!prev) return prev;
+    return {
+      ...prev,
+      productos: prev.productos.map(prod => {
+        if (prod.id !== producto.id) return prod;
+        // 1. Actualiza polinesFijacion
+        const updated = {
+          ...prod,
+          polinesFijacion: [
+            ...(prod.polinesFijacion ?? []),
+            {
+              tipo: calcularTipoPolin(prod.peso ?? 0, materiales),
+              cantidad: 1,
+              medida: prod.anchoEmpaque
+            }
+          ]
+        };
+        // 2. RE-calcula polinesAbajo si corresponde
+        return recalcularPolinesAbajoPorPolinesFijacion(updated, materiales);
+      }),
+    };
+  });
+  handleCalcularTotales(producto.id, setCosteo, materiales);
+};
 
+ function recalcularPolinesAbajoPorPolinesFijacion(producto: Producto, materiales: Material[]): Producto {
+  const llevaPolinFijacion = !!(producto.polinesFijacion && producto.polinesFijacion.length);
+
+  // Si no hay polinesAbajo, regresa igual
+  if (!producto.polinesAbajo?.length) return producto;
+
+  const nuevosPolinesAbajo = producto.polinesAbajo.map(pol =>
+    ({
+      ...pol,
+      tipo: calcularTipoPolinAbajoPorPeso(
+        producto.peso ?? 0,
+        producto.largoEmpaque,  // o la medida que uses para polinesAbajo
+        materiales,
+        llevaPolinFijacion
+      ),
+    })
+  );
+
+  return { ...producto, polinesAbajo: nuevosPolinesAbajo };
+}
   const alturaTotalFijacion = producto.polinesFijacion?.reduce(
     (total, polin) =>
       total +  (alturasPorTipo[polin.tipo] ?? 0),

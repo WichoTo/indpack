@@ -1,9 +1,9 @@
 
 import {  CorralGeneral, CorralTopes, Costeo , Material, MaterialSuc, MaterialTotalRow, Producto, Tacon, TaconCorrido, TaconPieza ,Totales} from "../config/types";
-import {   useMemo } from "react";
-import {  useFetchMaterialesSuc } from "./useFetchFunctions";
+import {   useEffect, useMemo } from "react";
+import {  actualizarCosteo, useFetchMaterialesSuc } from "./useFetchFunctions";
 import { useSucursal } from "../config/context/SucursalContext";
-
+import { debounce } from 'lodash'; 
 
  export const alturasPorTipo: Record<string, number> = {
     P6X4: 14,
@@ -11,20 +11,59 @@ import { useSucursal } from "../config/context/SucursalContext";
     P4X3: 9,
     P4X2: 4,
   };
+export function calcPostesIgualados(
+  medida: number,
+  espacio: number,
+  maxTramo: number 
+): number {
+  const segmentos = Math.ceil(medida / maxTramo);
+  const largoSegmento = medida / segmentos;
+  const postesPorSegmento = Math.ceil(largoSegmento / espacio) + 1;
+  return segmentos * postesPorSegmento*2;
+}
 
-  export const calcularCantidadPostes = (largoEmpaque: number) => {
-  if (largoEmpaque <= 122) return 4;
-  if (largoEmpaque > 122 && largoEmpaque <= 244) return 6;
-  if (largoEmpaque > 244 && largoEmpaque <= 366) return 8;
-  return 10;
+/** Postes para caras 2 y 4 */
+export const calcPostesHuacal2y4 = (medida: number): number =>
+  calcPostesIgualados(medida, 61, 420);
+
+/** Postes para caras 1 y 3 */
+export const calcPostesHuacal1y3 = (medida: number): number =>
+  calcPostesIgualados(medida, 61, 420);
+export const calcLarguerosHuacal2y4 = (medida: number): number =>
+ calcPostesIgualados(medida, 61, 420);
+export const calcLarguerosHuacal1y3 = (medida: number): number =>
+  calcPostesIgualados(medida, 61, 420);
+
+
+
+
+export const calcularCantidadLargueros = (medida: number) => {
+ return calcPostesIgualados(medida, 244, 420);
+};
+export const calcularCantidadPostes = (medida: number): number => {
+  // Si cabe en un solo tramo, aplicamos la fórmula original
+  if (medida <= 420) {
+    return (Math.ceil(medida / 122) + 1) * 2;
+  }
+
+  const tramoMax = 420;
+  const segmentos = Math.ceil(medida / tramoMax);
+  let totalPostes = 0;
+
+  for (let i = 0; i < segmentos; i++) {
+    const largoSegmento =
+      i < segmentos - 1
+        ? tramoMax
+        : medida - tramoMax * (segmentos - 1);
+
+    const nPostesSegmento = (Math.ceil(largoSegmento / 122) + 1) * 2;
+    totalPostes += nPostesSegmento;
+  }
+
+  return totalPostes;
 };
 
-export const calcularCantidadLargueros = (altoEmpaque: number) => {
-  if (altoEmpaque <= 244) return 4;
-  if (altoEmpaque > 244 && altoEmpaque <= 366) return 6;
-  if (altoEmpaque > 366 && altoEmpaque <= 448) return 8;
-  return 10;
-};
+
 
 export const recalcularCodigosProductos = (
   setPedidoActivo: React.Dispatch<React.SetStateAction<Costeo>>
@@ -110,20 +149,118 @@ export const calcularTipoDuela = (peso: number, materiales: Material[]) =>
 export const calcularTipoPared = (peso: number, materiales: Material[]) =>
   calcularTipoPorPeso(peso, materiales, 'Paredes')
 
+export function calcularTipoPolinAbajoPorPeso(
+  peso: number,
+  medida: number,
+  materiales: Material[],
+  llevaPolinFijacion: boolean = false
+): string {
+  // Helper para buscar el nombre real de cada polín que exista
+  const buscarPolin = (codigo: string) => {
+    return materiales
+      .filter(m => m.tipo === 'Polines')
+      .map(m => m.nombre)
+      .find(nombre => nombre.replace(/\s+/g, '').toUpperCase().endsWith(codigo))
+      || codigo;
+  };
+
+  const polinesPermitidosMedida = ['4X4', '6X4']; // Códigos válidos si medida > 420
+  const polinesPermitidosFijacion = ['4X3', '4X4', '6X4']; // Si lleva polín de fijación
+
+  // 1. Si medida > 420, manda la medida
+  if (medida > 420) {
+    // Solo se puede usar 4X4 o 6X4
+    // Si también tiene polín de fijación, solo 4X4 o 6X4 (pero igual chequeamos si existe P4X3)
+    if (llevaPolinFijacion) {
+      // Solo puede ser 4X4 o 6X4, y nunca 4X2 ni 4X3
+      for (let codigo of polinesPermitidosMedida) {
+        const polin = buscarPolin(codigo);
+        if (polin) return polin;
+      }
+    } else {
+      // Sin fijación, igual: 4X4 o 6X4
+      for (let codigo of polinesPermitidosMedida) {
+        const polin = buscarPolin(codigo);
+        if (polin) return polin;
+      }
+    }
+  }
+
+  // 2. Si hay polín de fijación pero la medida no manda:
+  if (llevaPolinFijacion) {
+    // Puede ser 4X3, 4X4, 6X4, nunca 4X2
+    for (let codigo of polinesPermitidosFijacion) {
+      const polin = buscarPolin(codigo);
+      if (polin) return polin;
+    }
+  }
+
+  // 3. Si ninguna condición especial, el tipo depende del peso
+  // Usamos tu función para determinar el tipo base
+  const tipoBase = calcularTipoPorPeso(peso, materiales, 'Polines');
+  const codigoBase = tipoBase.replace(/\s+/g, '').toUpperCase();
+  // Si por peso tocara uno NO permitido por alguna regla anterior, aquí ya pasa.
+  return buscarPolin(codigoBase);
+}
+
 
 export const handleCalcularTotales = (
   productoID: string,
   setPedidoActivo: React.Dispatch<React.SetStateAction<Costeo>>,
-  materiales: Material[],
+  materiales: { nombre: string; precio: number }[],
 ) => {
+
   setPedidoActivo(prev => {
     if (!prev) return prev;
 
-    // 1) Buscamos el producto que queremos recalcular
     const producto = prev.productos.find(p => p.id === productoID);
     if (!producto) return prev;
 
-    // 2) Agrupar materiales (solo las “medidas” por tipo) — NO calculamos el precio aún
+    // --- INICIO DEL PATCH: congelar precios extras ---
+    // Creamos copia local del producto y aseguramos los precios de extras sólo si están undefined
+
+    const productoActualizado: Producto = { ...producto };
+
+    if (productoActualizado.precioDesec === undefined)
+      productoActualizado.precioDesec = getPrecioExtra('DESEC.', materiales);
+
+    if (productoActualizado.precioSGolpe === undefined)
+      productoActualizado.precioSGolpe = getPrecioExtra('S.GOLPE', materiales);
+
+    if (productoActualizado.precioSPOS === undefined)
+      productoActualizado.precioSPOS = getPrecioExtra('S.POS.', materiales);
+
+    if (productoActualizado.precioSENAL === undefined)
+      productoActualizado.precioSENAL = getPrecioExtra('SEÑAL', materiales);
+
+    if (productoActualizado.precioTermo === undefined)
+      productoActualizado.precioTermo = getPrecioExtra('Termo', materiales);
+
+    // Bolsa antihumedad como objeto anidado
+    if (!productoActualizado.bolsaAntihumedad) {
+    productoActualizado.bolsaAntihumedad = {
+      cantidad: producto.cantidadBolsa ?? 0,
+      cantidadBase: producto.bolsaAntihumedad?.cantidadBase ?? 0,
+      cantidadParedes: producto.bolsaAntihumedad?.cantidadParedes ?? 0,
+      largobase: producto.bolsaAntihumedad?.largobase ?? 0,
+      anchobase: producto.bolsaAntihumedad?.anchobase ?? 0,
+      indicebase: producto.bolsaAntihumedad?.indicebase ?? 0,
+      largoparedes: producto.bolsaAntihumedad?.largoparedes ?? 0,
+      altoparedes: producto.bolsaAntihumedad?.altoparedes ?? 0,
+      indiceparedes: producto.bolsaAntihumedad?.indiceparedes ?? 0,
+      precioUnitario: producto.bolsaAntihumedad?.precioUnitario ?? getPrecioExtra('BolsaAntihumedad', materiales),
+      importeTotal: producto.bolsaAntihumedad?.importeTotal ?? 0,
+    }
+  }else if (productoActualizado.bolsaAntihumedad.precioUnitario === undefined) {
+  // Solo si nunca se había asignado el precio
+  productoActualizado.bolsaAntihumedad.precioUnitario = getPrecioExtra('BolsaAntihumedad', materiales);
+}
+
+
+    // --- FIN DEL PATCH ---
+
+    const isTarima = productoActualizado.tipoEquipo === 'Tarima';
+
     interface Agrupado {
       medidaTotal: number;
       tipo: string;
@@ -131,488 +268,243 @@ export const handleCalcularTotales = (
     }
     const agrupados: Record<string, Agrupado> = {};
 
-    const agregarAMedidaTotal = (
+    const agregar = (
       tipo: string,
       cantidad: number,
       medida: number,
-      usarFormula: boolean = true
+      usarFormula = true
     ) => {
-      // cálculo de medidaTotal tal como llevabas:
+      if (!tipo || cantidad <= 0 || medida <= 0) return;
       const medidaTotal = usarFormula
         ? (cantidad * medida / 420) * 1.15
         : cantidad * medida;
-
-      // asumimos que, en tu arreglo `materiales`, el campo que identifica el nombre es `nombre`
       const precioMaterial = materiales.find(m => m.nombre === tipo)?.precio ?? 0;
-
-      if (agrupados[tipo]) {
-        agrupados[tipo].medidaTotal += medidaTotal;
-      } else {
-        agrupados[tipo] = { medidaTotal, tipo, precioMaterial };
-      }
+      if (agrupados[tipo]) agrupados[tipo].medidaTotal += medidaTotal;
+      else agrupados[tipo] = { tipo, medidaTotal, precioMaterial };
     };
 
-    // --- Tu lógica para “polinesAbajo, tacon, corral, etc.”, idéntica a la que ya tenías ---
-    producto.polinesAbajo?.forEach(pol =>
-      agregarAMedidaTotal(pol.tipo, pol.cantidad, pol.medida)
-    );
-
-    if (producto.tipoTacon === 'Corrido') {
-      const t = producto.tacon as any;
-      agregarAMedidaTotal(
-        t.tipoPolin,
-        Number(t.cantidad) || 0,
-        Number(t.medida) || 0
+    if (isTarima) {
+      // --- Solo bloques de Tarima ---
+      productoActualizado.polinesAbajo?.forEach(pol =>
+        agregar(pol.tipo, pol.cantidad, pol.medida)
       );
-    } else if (producto.tipoTacon === 'Pieza') {
-      const t = producto.tacon as any;
-      agregarAMedidaTotal(
-        t.tipoPolin,
-        (Number(t.cantidad) * (producto.polinesAbajo?.[0]?.cantidad || 0)),
-        30,
-        true
+      if (productoActualizado.tipoTacon === 'Corrido') {
+        const t = productoActualizado.tacon as TaconCorrido;
+        agregar(t.tipoPolin, t.cantidad, t.medida);
+      } else if (productoActualizado.tipoTacon === 'Pieza') {
+        const t = productoActualizado.tacon as TaconPieza;
+        const nPolines = productoActualizado.polinesAbajo?.[0]?.cantidad ?? 0;
+        agregar(t.tipoPolin, t.cantidad * nPolines, 30);
+      }
+      if (productoActualizado.polinAmarre) {
+        agregar(
+          productoActualizado.polinAmarre.tipoPolin,
+          productoActualizado.polinAmarre.cantidad,
+          productoActualizado.polinAmarre.medida
+        );
+      }
+      productoActualizado.polinesFijacion?.forEach(pol =>
+        agregar(pol.tipo, pol.cantidad, pol.medida)
       );
-    }
-
-    if (producto.corral?.length) {
-      const c = producto.corral[0];
-      const medidaFinal = c.tipoCorral === 'Topes' ? 25 : c.medida;
-      agregarAMedidaTotal(c.tipoPolin, 1, medidaFinal);
-    }
-
-    if (producto.porterias) {
-      agregarAMedidaTotal(
-        producto.porterias.tipoPolin,
-        producto.porterias.cantidad,
-        producto.porterias.medida
+      if (productoActualizado.tendido) {
+        agregar(
+          productoActualizado.tendido.tipo,
+          productoActualizado.tendido.cantidad,
+          productoActualizado.tendido.medida + (productoActualizado.tendido.extra ?? 0)
+        );
+      }
+      if (productoActualizado.maderaExtra?.tipoPolin) {
+        agregar(
+          productoActualizado.maderaExtra.tipoPolin,
+          1,
+          productoActualizado.maderaExtra.medida
+        );
+      }
+    } else {
+      // --- Lógica para Caja, Huacal, Otros ---
+      productoActualizado.polinesAbajo?.forEach(pol =>
+        agregar(pol.tipo, pol.cantidad, pol.medida)
       );
-    }
-
-    if (producto.maderaExtra?.tipoPolin) {
-      agregarAMedidaTotal(
-        producto.maderaExtra.tipoPolin,
-        1,
-        producto.maderaExtra.medida
+      if (productoActualizado.tipoTacon === 'Corrido') {
+        const t = productoActualizado.tacon as TaconCorrido;
+        agregar(t.tipoPolin, t.cantidad, t.medida);
+      } else if (productoActualizado.tipoTacon === 'Pieza') {
+        const t = productoActualizado.tacon as TaconPieza;
+        const nPolines = productoActualizado.polinesAbajo?.[0]?.cantidad ?? 0;
+        agregar(t.tipoPolin, t.cantidad * nPolines, 30);
+      }
+      // Corral
+      productoActualizado.corral?.forEach(c => {
+        if ('medida' in c) {
+          agregar(c.tipoPolin, 1, (c as any).medida);
+        }
+      });
+      // Porterías
+      if (productoActualizado.porterias) {
+        agregar(
+          productoActualizado.porterias.tipoPolin,
+          productoActualizado.porterias.cantidad,
+          productoActualizado.porterias.medida
+        );
+      }
+      // Madera extra
+      if (productoActualizado.maderaExtra?.tipoPolin) {
+        agregar(
+          productoActualizado.maderaExtra.tipoPolin,
+          1,
+          productoActualizado.maderaExtra.medida
+        );
+      }
+      // Polín de amarre
+      if (productoActualizado.polinAmarre) {
+        agregar(
+          productoActualizado.polinAmarre.tipoPolin,
+          productoActualizado.polinAmarre.cantidad,
+          productoActualizado.polinAmarre.medida
+        );
+      }
+      // Polines de fijación
+      productoActualizado.polinesFijacion?.forEach(pol =>
+        agregar(pol.tipo, pol.cantidad, pol.medida)
       );
-    }
-
-    if (producto.polinAmarre) {
-      agregarAMedidaTotal(
-        producto.polinAmarre.tipoPolin,
-        producto.polinAmarre.cantidad,
-        producto.polinAmarre.medida
-      );
-    }
-
-    producto.polinesFijacion?.forEach(pol =>
-      agregarAMedidaTotal(pol.tipo, pol.cantidad, pol.medida)
-    );
-
-    if (producto.tendido) {
-      agregarAMedidaTotal(
-        producto.tendido.tipo,
-        producto.tendido.cantidad,
-        producto.tendido.medida + producto.tendido.extra
-      );
-    }
-
-    if (producto.duelas) {
-      const tipoDuela = producto.duelas.tipoDuela || 'Duela';
-      producto.duelas.postes.forEach(ps =>
-        agregarAMedidaTotal(tipoDuela, ps.cantidad, ps.medida)
-      );
-      producto.duelas.largueros.forEach(lg =>
-        agregarAMedidaTotal(tipoDuela, lg.cantidad, lg.medida)
-      );
-      if (producto.duelas.duelate) {
-        const d = producto.duelas.duelate;
-        agregarAMedidaTotal(tipoDuela, d.postes.cantidad, d.postes.medida);
-        agregarAMedidaTotal(tipoDuela, d.largueros.cantidad, d.largueros.medida);
+      // Tendido
+      if (productoActualizado.tendido) {
+        agregar(
+          productoActualizado.tendido.tipo,
+          productoActualizado.tendido.cantidad,
+          productoActualizado.tendido.medida + (productoActualizado.tendido.extra ?? 0)
+        );
+      }
+      // Duela
+      if (productoActualizado.duelas) {
+        const tipoDuela = productoActualizado.duelas.tipoDuela || '';
+        productoActualizado.duelas.postes.forEach(ps =>
+          agregar(tipoDuela, ps.cantidad, ps.medida)
+        );
+        productoActualizado.duelas.largueros.forEach(lg =>
+          agregar(tipoDuela, lg.cantidad, lg.medida)
+        );
+        if (productoActualizado.duelas.duelate) {
+          const d = productoActualizado.duelas.duelate;
+          agregar(tipoDuela, d.postes.cantidad, d.postes.medida);
+          agregar(tipoDuela, d.largueros.cantidad, d.largueros.medida);
+        }
+      }
+      // Paredes
+      if (productoActualizado.paredes?.tipoParedes) {
+        const hojas = calcularHojasNecesarias(
+          productoActualizado.paredes.largo1y3 || 0,
+          productoActualizado.paredes.alto1y3 || 0,
+          productoActualizado.paredes.largo2y4 || 0,
+          productoActualizado.paredes.alto2y4 || 0,
+          productoActualizado.paredes.largoTecho || 0,
+          productoActualizado.paredes.altoTecho || 0,
+        );
+        agregar(productoActualizado.paredes.tipoParedes, 1, hojas, false);
       }
     }
 
-    if (producto.paredes.tipoParedes) {
-      const hojas = calcularHojasNecesarias(
-        producto.paredes.largo1y3 || 0,
-        producto.paredes.alto1y3 || 0,
-        producto.paredes.largo2y4 || 0,
-        producto.paredes.alto2y4 || 0,
-        producto.paredes.largoTecho || 0,
-        producto.paredes.altoTecho || 0,
-      );
-      agregarAMedidaTotal(producto.paredes.tipoParedes, 1, hojas, false);
-    }
-
-    // 3) Convertir `agrupados` a un array para la UI (solo materiales)
-    const resumenMateriales: Totales[] = Object.values(agrupados).map(d => ({
-      tipo: d.tipo,
-      cantidad: 0,                         // para materiales dejamos 0
-      medida: d.medidaTotal,
-      precioTotal: d.precioMaterial * d.medidaTotal,
-      pesoTotal: 0,
-    }));
-
-    // 4) Sumar importes de extras (bolsa, termo, desec, etc.)
-    const impBolsa  = Number(producto.importeBolsaAntihumedad ?? 0);
-    const impTermo  = Number(producto.importeTermo           ?? 0);
-    const impDesec  = Number(producto.importeDesec           ?? 0);
-    const impSG     = Number(producto.importeSGolpe          ?? 0);
-    const impSPOS   = Number(producto.importeSPOS            ?? 0);
-    const impSenal  = Number(producto.importeSENAL           ?? 0);
-    const sumaExtras = impBolsa + impTermo + impDesec + impSG + impSPOS + impSenal;
-
-    // 5) Creamos siempre una entrada para cada “extra”, incluso si su importe=0
-    const resumenExtras: Totales[] = [
+    // --- Extras comunes: SIEMPRE usar el precio guardado en productoActualizado ---
+    const extras: Totales[] = [
       {
         tipo: 'DESEC.',
-        cantidad: Number(producto.cantidadDesec ?? 0),
+        cantidad: productoActualizado.cantidadDesec ?? 0,
         medida: 0,
-        precioTotal: impDesec,
-        pesoTotal: 0,
+        precioUnitario: productoActualizado.precioDesec,
+        precioTotal: Number(productoActualizado.importeDesec ?? 0),
+        pesoTotal: 0
       },
       {
         tipo: 'S.GOLPE',
-        cantidad: producto.cantidadSGolpe ? Number(producto.cantidadSGolpe) : 1,
+        cantidad: productoActualizado.cantidadSGolpe ?? 1,
         medida: 0,
-        precioTotal: impSG,
-        pesoTotal: 0,
+        precioUnitario: productoActualizado.precioSGolpe,
+        precioTotal: Number(productoActualizado.importeSGolpe ?? 0),
+        pesoTotal: 0
       },
       {
         tipo: 'S.POS.',
-        cantidad: producto.cantidadSPOS ? Number(producto.cantidadSPOS) : 1,
+        cantidad: productoActualizado.cantidadSPOS ?? 1,
         medida: 0,
-        precioTotal: impSPOS,
-        pesoTotal: 0,
+        precioUnitario: productoActualizado.precioSPOS,
+        precioTotal: Number(productoActualizado.importeSPOS ?? 0),
+        pesoTotal: 0
       },
       {
         tipo: 'SEÑAL',
-        cantidad: producto.cantidadSENAL ? Number(producto.cantidadSENAL) : 1,
+        cantidad: productoActualizado.cantidadSENAL ?? 1,
         medida: 0,
-        precioTotal: impSenal,
-        pesoTotal: 0,
+        precioUnitario: productoActualizado.precioSENAL,
+        precioTotal: Number(productoActualizado.importeSENAL ?? 0),
+        pesoTotal: 0
       },
       {
         tipo: 'BolsaAntihumedad',
-        cantidad: Number(producto.cantidadBolsa ?? 0),
+        cantidad: productoActualizado.cantidadBolsa ?? 0,
         medida: 0,
-        precioTotal: impBolsa,
-        pesoTotal: 0,
+        precioUnitario: productoActualizado.bolsaAntihumedad?.precioUnitario,
+        precioTotal: Number(productoActualizado.bolsaAntihumedad?.importeTotal ?? 0),
+        pesoTotal: 0
       },
       {
         tipo: 'Termo',
-        cantidad: Number(producto.cantidadTermo ?? 0),
+        cantidad: productoActualizado.cantidadTermo ?? 0,
         medida: 0,
-        precioTotal: impTermo,
-        pesoTotal: 0,
+        precioUnitario: productoActualizado.precioTermo,
+        precioTotal: Number(productoActualizado.importeTermo ?? 0),
+        pesoTotal: 0
       },
     ];
 
-    // 6) Unimos “materiales” + “extras” para el arreglo final de totales
-    const totales: Totales[] = [
-      ...resumenMateriales,
-      ...resumenExtras
-    ];
+    // 1) De “agrupados” a Totales[]
+    const prevTotales = productoActualizado.totales ?? [];
+    const resumen: Totales[] = Object.values(agrupados).map(d => {
+      const prev = prevTotales.find(t => t.tipo === d.tipo);
+      const precioUnitarioCongelado = prev?.precioUnitario ?? d.precioMaterial;
+      return {
+        tipo: d.tipo,
+        cantidad: 0,
+        medida: d.medidaTotal,
+        precioUnitario: precioUnitarioCongelado,
+        precioTotal: precioUnitarioCongelado * d.medidaTotal,
+        pesoTotal: 0,
+      };
+    });
 
-    // 7) Calculamos precioTotalMateriales (solo materiales)
-    const precioTotalMateriales = resumenMateriales.reduce(
-      (acc, r) => acc + r.precioTotal,
-      0
-    );
+    // 2) Unir resumen + extras
+    const totales: Totales[] = [...resumen, ...extras];
 
-    // 8) Calcular importeMaterialDirecto (materiales + extras)
-    const importeMaterialDirecto = precioTotalMateriales + sumaExtras;
+    // 3) Cálculos finales
+    const importeMaterialDirecto = totales.reduce((acc, r) => acc + r.precioTotal, 0);
+    const varios = importeMaterialDirecto * 0.15;
+    const manoObra = importeMaterialDirecto * 0.50;
+    const flete = importeMaterialDirecto * 0.15;
+    const factor = Number(productoActualizado.factor) || 1.4;
+    const precioUnitario = (importeMaterialDirecto + varios + manoObra + flete) * factor;
 
-    // 9) Calcular varios, manoObra y flete sobre importeMaterialDirecto
-    const varios   = importeMaterialDirecto * 0.15;
-    const manoObra = importeMaterialDirecto * 0.5;
-    const flete    = importeMaterialDirecto * 0.15;
+    const cantidad = productoActualizado.cantidad ?? 1;
 
-    // 10) Aplicar factor
-    const factor = Number(producto.factor) || 1.4;
-
-    // 11) Importe total final
-    const importeTotal = (importeMaterialDirecto + varios + manoObra + flete) * factor;
-
-    // 12) Devolver el estado actualizado con todos los campos nuevos
     return {
       ...prev,
       productos: prev.productos.map(p =>
         p.id === productoID
           ? {
-              ...p,
-              importeMaterialDirecto,
-              totales,      // incluye siempre las 6 filas de “extras”
-              varios,
-              manoObra,
-              flete,
-              factor,
-              importeTotal,
-            }
+            ...productoActualizado,
+            totales,
+            importeMaterialDirecto,
+            varios,
+            manoObra,
+            flete,
+            factor,
+            precioUnitario,
+            importeTotalFinanciamiento: precioUnitario * (p.factorFinanciamiento ?? 1),
+            importeTotal: precioUnitario * (p.factorFinanciamiento ?? 1) * cantidad
+          }
           : p
       ),
     };
   });
 };
-
-
-export const handleCalcularTotales2 = (
-  productoID: string,
-  setPedidoActivo: React.Dispatch<React.SetStateAction<Costeo>>,
-  materiales: Material[],
-) => {
-  setPedidoActivo(prev => {
-    if (!prev) return prev;
-
-    // 1) Buscamos el producto que queremos recalcular
-    const producto = prev.productos.find(p => p.id === productoID);
-    if (!producto) return prev;
-
-    // 2) Agrupar materiales (solo las “medidas” por tipo) — NO calculamos el precio aún
-    interface Agrupado {
-      medidaTotal: number;
-      tipo: string;
-      precioMaterial: number;
-    }
-    const agrupados: Record<string, Agrupado> = {};
-
-    const agregarAMedidaTotal = (
-      tipo: string,
-      cantidad: number,
-      medida: number,
-      usarFormula: boolean = true
-    ) => {
-      // cálculo de medidaTotal tal como llevabas:
-      const medidaTotal = usarFormula
-        ? (cantidad * medida / 420) * 1.15
-        : cantidad * medida;
-
-      // aquí asumimos que, en tu arreglo materiales, el campo que identifica el nombre es `nombre`
-      const precioMaterial = materiales.find(m => m.nombre === tipo)?.precio ?? 0;
-
-      if (agrupados[tipo]) {
-        agrupados[tipo].medidaTotal += medidaTotal;
-      } else {
-        agrupados[tipo] = { medidaTotal, tipo, precioMaterial };
-      }
-      // **OJO**: ya no acumulamos precioTotalMateriales aquí. Lo haremos después, a partir de `agrupados`.
-    };
-
-    // --- Tu lógica para “polinesAbajo, tacon, corral, etc.” exactamente igual que antes ---
-    producto.polinesAbajo?.forEach(pol =>
-      agregarAMedidaTotal(pol.tipo, pol.cantidad, pol.medida)
-    );
-
-    if (producto.tipoTacon === 'Corrido') {
-      const t = producto.tacon as any;
-      agregarAMedidaTotal(
-        t.tipoPolin,
-        Number(t.cantidad) || 0,
-        Number(t.medida) || 0
-      );
-    } else if (producto.tipoTacon === 'Pieza') {
-      const t = producto.tacon as any;
-      agregarAMedidaTotal(
-        t.tipoPolin,
-        Number(t.cantidad) * producto.polinesAbajo![0].cantidad,
-        30,
-        true
-      );
-      console.log((Number(t.cantidad) * producto.polinesAbajo![0].cantidad));
-    }
-
-    if (producto.corral?.length) {
-      const c = producto.corral[0];
-      const medidaFinal = c.tipoCorral === 'Topes' ? 25 : c.medida;
-      agregarAMedidaTotal(c.tipoPolin, 1, medidaFinal);
-    }
-
-    if (producto.porterias) {
-      agregarAMedidaTotal(
-        producto.porterias.tipoPolin,
-        producto.porterias.cantidad,
-        producto.porterias.medida
-      );
-    }
-
-    if (producto.maderaExtra?.tipoPolin) {
-      agregarAMedidaTotal(
-        producto.maderaExtra.tipoPolin,
-        1,
-        producto.maderaExtra.medida
-      );
-    }
-
-    if (producto.polinAmarre) {
-      agregarAMedidaTotal(
-        producto.polinAmarre.tipoPolin,
-        producto.polinAmarre.cantidad,
-        producto.polinAmarre.medida
-      );
-    }
-
-    producto.polinesFijacion?.forEach(pol =>
-      agregarAMedidaTotal(pol.tipo, pol.cantidad, pol.medida)
-    );
-
-    if (producto.tendido) {
-      agregarAMedidaTotal(
-        producto.tendido.tipo,
-        producto.tendido.cantidad,
-        producto.tendido.medida + producto.tendido.extra
-      );
-    }
-
-    if (producto.duelas) {
-      const tipoDuela = producto.duelas.tipoDuela || 'Duela';
-      producto.duelas.postes.forEach(ps =>
-        agregarAMedidaTotal(tipoDuela, ps.cantidad, ps.medida)
-      );
-      producto.duelas.largueros.forEach(lg =>
-        agregarAMedidaTotal(tipoDuela, lg.cantidad, lg.medida)
-      );
-      if (producto.duelas.duelate) {
-        const d = producto.duelas.duelate;
-        agregarAMedidaTotal(tipoDuela, d.postes.cantidad, d.postes.medida);
-        agregarAMedidaTotal(tipoDuela, d.largueros.cantidad, d.largueros.medida);
-      }
-    }
-
-    if (producto.paredes.tipoParedes) {
-      const hojas = calcularHojasNecesarias(
-        producto.paredes.largo1y3 || 0,
-        producto.paredes.alto1y3 || 0,
-        producto.paredes.largo2y4 || 0,
-        producto.paredes.alto2y4 || 0,
-        producto.paredes.largoTecho || 0,
-        producto.paredes.altoTecho || 0,
-      );
-      agregarAMedidaTotal(producto.paredes.tipoParedes, 1, hojas, false);
-    }
-
-    // 3) Convertir `agrupados` a un array para la UI (**resumen**) y ahí ya sí calculamos precioTotalMateriales
-    const resumen = Object.values(agrupados).map(d => ({
-      tipo: d.tipo,
-      cantidad: 0,
-      medida: d.medidaTotal,
-      precioTotal: d.precioMaterial * d.medidaTotal,
-      pesoTotal: 0,
-    }));
-
-    // ---------- AQUÍ EMPIEZA LA PARTE NUEVA PARA AGREGAR EXTRAS AL RESUMEN ----------
-
-    // 4) Sumar importes adicionales (bolsa, termo, desec, etc.)
-    const impBolsa  = Number(producto.importeBolsaAntihumedad ?? 0);
-    const impTermo  = Number(producto.importeTermo           ?? 0);
-    const impDesec  = Number(producto.importeDesec           ?? 0);
-    const impSG     = Number(producto.importeSGolpe          ?? 0);
-    const impSPOS   = Number(producto.importeSPOS            ?? 0);
-    const impSenal  = Number(producto.importeSENAL           ?? 0);
-
-    // Vamos a crear un arreglo con cada extra, pero solo si su importe es mayor a cero
-    const extras: {
-      tipo: string;
-      cantidad: number;
-      medida: number;
-      precioTotal: number;
-      pesoTotal: number;
-    }[] = [];
-
-    if (impBolsa > 0) {
-      extras.push({
-        tipo: 'Bolsa Antihumedad',
-        cantidad: 1,
-        medida: 0,
-        precioTotal: impBolsa,
-        pesoTotal: 0,
-      });
-    }
-    if (impTermo > 0) {
-      extras.push({
-        tipo: 'Termo',
-        cantidad: 1,
-        medida: 0,
-        precioTotal: impTermo,
-        pesoTotal: 0,
-      });
-    }
-    if (impDesec > 0) {
-      extras.push({
-        tipo: 'DESEC',
-        cantidad: 1,
-        medida: 0,
-        precioTotal: impDesec,
-        pesoTotal: 0,
-      });
-    }
-    if (impSG > 0) {
-      extras.push({
-        tipo: 'S. Golpe',
-        cantidad: 1,
-        medida: 0,
-        precioTotal: impSG,
-        pesoTotal: 0,
-      });
-    }
-    if (impSPOS > 0) {
-      extras.push({
-        tipo: 'S. POS',
-        cantidad: 1,
-        medida: 0,
-        precioTotal: impSPOS,
-        pesoTotal: 0,
-      });
-    }
-    if (impSenal > 0) {
-      extras.push({
-        tipo: 'SEÑAL',
-        cantidad: 1,
-        medida: 0,
-        precioTotal: impSenal,
-        pesoTotal: 0,
-      });
-    }
-
-    // Mezclamos los materiales agrupados (resumen) con los extras
-    const totalesCompletos = [...resumen, ...extras];
-
-    // 5) Calcular precioTotalMateriales + extras
-    const precioTotalMaterialesYNExtras = totalesCompletos.reduce(
-      (acc, r) => acc + r.precioTotal,
-      0
-    );
-
-    // 6) Calcular varios, manoObra y flete sobre importeMaterialDirecto (ahora incluye extras)
-    const varios   = precioTotalMaterialesYNExtras * 0.15;
-    const manoObra = precioTotalMaterialesYNExtras * 0.5;
-    const flete    = precioTotalMaterialesYNExtras * 0.15;
-
-    // 7) Aplicar factor
-    const factor = Number(producto.factor) || 1.4;
-
-    // 8) Importe total final
-    const importeTotal = (precioTotalMaterialesYNExtras + varios + manoObra + flete) * factor;
-
-    // 9) Devolver el estado actualizado con todos los campos nuevos
-    return {
-      ...prev,
-      productos: prev.productos.map(p =>
-        p.id === productoID
-          ? {
-              ...p,
-              importeMaterialDirecto: precioTotalMaterialesYNExtras,
-              totales: totalesCompletos, // aquí asignamos ya el arreglo con materiales + extras
-              varios,
-              manoObra,
-              flete,
-              factor,
-              importeTotal,
-            }
-          : p
-      ),
-    };
-  });
-};
-
 
 
 
@@ -721,6 +613,9 @@ export const handleProductoChange = (
 ) => {
   
   if(productoID){
+    if (name === 'tipoEquipo') {
+    calcularDuelas(productoID, setPedidoActivo, materiales);
+  }
     handleCalcularTotales(productoID,setPedidoActivo,materiales)
   }
   let parsedValue: string | number = value;
@@ -738,76 +633,89 @@ export const handleProductoChange = (
     };
   });
 };
+
+
+
+
 export const calcularDuelas = (
   productoId: string,
   setPedidoActivo: React.Dispatch<React.SetStateAction<Costeo>>,
-  materiales:Material[]
+  materiales: any[]
 ) => {
-  handleCalcularTotales(productoId,setPedidoActivo,materiales)
-  setPedidoActivo((prevPedido) => {
-    if (!prevPedido) return prevPedido;
+  handleCalcularTotales(productoId, setPedidoActivo, materiales);
+
+  setPedidoActivo(prev => {
+    if (!prev) return prev;
 
     return {
-      ...prevPedido,
-      productos: prevPedido.productos.map((producto) => {
+      ...prev,
+      productos: prev.productos.map(producto => {
         if (producto.id !== productoId) return producto;
 
-        // 📌 Función para evitar re-renderizados innecesarios
-        const objetosIguales = (obj1: any, obj2: any) => JSON.stringify(obj1) === JSON.stringify(obj2);
+        const esHuacal = producto.tipoEquipo === 'Huacal';
 
-        // 📌 Calcular cantidad y medidas de postes y largueros
-        const calcularCantidadPostes = (anchoEmpaque: number) => {
-          if (anchoEmpaque <= 122) return 4;
-          if (anchoEmpaque > 122 && anchoEmpaque <= 244) return 6;
-          if (anchoEmpaque > 244 && anchoEmpaque <= 366) return 8;          
-          if (anchoEmpaque > 366 && anchoEmpaque <= 448) return 10;
-          if (anchoEmpaque > 448 && anchoEmpaque <= 600) return 12;
-          if (anchoEmpaque > 600 && anchoEmpaque <= 722) return 14;
-          if (anchoEmpaque > 722 && anchoEmpaque <= 844) return 16;
-          if (anchoEmpaque > 966 && anchoEmpaque <= 1088) return 18;
-          if (anchoEmpaque > 1088 && anchoEmpaque <= 1210) return 20; 
-          return 22;
-        };
 
-        const calcularCantidadLargueros = (altoEmpaque: number) => {
-          if (altoEmpaque <= 244) return 4;
-          if (altoEmpaque > 244 && altoEmpaque <= 488) return 6; 
-          return 8;
-        };
-
+        const { anchoEmpaque, largoEmpaque, altoEmpaque, incrAlto = 9, grosor } = producto;
         const nuevoDuelas = {
-          tipoDuela: producto.duelas?.tipoDuela || "",
+          tipoDuela: producto.duelas?.tipoDuela || '',
 
-          // 🔹 Postes
+          // D.2y4
           postes: [
-            //d13
-            { cantidad: calcularCantidadPostes(producto.anchoEmpaque), medida: producto.altoEmpaque },
-            //d24
-            { cantidad: calcularCantidadPostes(producto.largoEmpaque), medida: producto.altoEmpaque + 9 },
+            {
+              cantidad: esHuacal
+                ? calcPostesHuacal2y4(anchoEmpaque)
+                : calcularCantidadPostes(anchoEmpaque),
+              medida: altoEmpaque,
+            },
+            {
+              cantidad: esHuacal
+                ? calcPostesHuacal2y4(largoEmpaque)
+                : calcularCantidadPostes(largoEmpaque),
+              medida: altoEmpaque + 9,
+              
+            },
           ],
 
-          // 🔹 Largueros
+          // Largueros D.2y4
           largueros: [
-            //d13
-            { cantidad: calcularCantidadLargueros(producto.anchoEmpaque), medida: producto.anchoEmpaque },
-            //d24
-            { cantidad: calcularCantidadLargueros(producto.altoEmpaque + 9 ), medida: producto.largoEmpaque},
+            {
+              cantidad: esHuacal
+                ? calcLarguerosHuacal2y4(altoEmpaque)
+                : calcularCantidadLargueros(altoEmpaque),
+              medida: anchoEmpaque,
+            },
+            {
+              cantidad: esHuacal
+                ? calcLarguerosHuacal2y4(altoEmpaque + incrAlto)
+                : calcularCantidadLargueros(altoEmpaque + incrAlto),
+              medida: largoEmpaque,
+            },
           ],
 
-          // 🔹 Duelate
+          // Duelate (techo)
           duelate: {
-            postes: { cantidad: calcularCantidadPostes(producto.largoEmpaque)/2, medida: producto.anchoEmpaque + 2 * producto.grosor },
+            postes: {
+              cantidad: esHuacal
+                ? Math.max(2, Math.ceil(calcPostesHuacal1y3(anchoEmpaque) / 2))
+                : Math.max(2, Math.ceil(calcularCantidadPostes(largoEmpaque) / 2)),
+              medida: anchoEmpaque + 2 * grosor,
+            },
             largueros: {
-              cantidad: calcularCantidadPostes(producto.anchoEmpaque) / 2,
-              medida: producto.largoEmpaque,
+              cantidad: esHuacal
+                ? Math.max(2, Math.ceil(calcLarguerosHuacal1y3(largoEmpaque) / 2))
+                : Math.max(2, Math.ceil(calcularCantidadLargueros(anchoEmpaque) / 2)),
+              medida: largoEmpaque,
             },
           },
         };
 
-        // 📌 Evitar actualización si los valores no han cambiado
-        if (objetosIguales(producto.duelas, nuevoDuelas)) return producto;
+        const iguales = JSON.stringify(producto.duelas) === JSON.stringify(nuevoDuelas);
+        if (iguales) return producto;
 
-        return { ...producto, duelas: nuevoDuelas };
+        return {
+          ...producto,
+          duelas: nuevoDuelas,
+        };
       }),
     };
   });
@@ -850,14 +758,14 @@ export const handleMedidasProductoChange = (
       if (tipoTacon === "Corrido") {
         nuevoTacon = {
           tipoCorral: "Corrido",
-          tipoPolin:  nuevoTipoPolin,
+          tipoPolin:  calcularTipoPolinAbajoPorPeso(peso ?? 0,nuevoLargoEmpaque,materiales, !!prod.polinesFijacion?.length),
           medida:     nuevoAnchoEmpaque,
           cantidad:   cantidadTacon,
         } as TaconCorrido;
       } else if (tipoTacon === "Pieza") {
         nuevoTacon = {
           tipoCorral: "Pieza",
-          tipoPolin:  nuevoTipoPolin,
+          tipoPolin:  calcularTipoPolinAbajoPorPeso(peso ?? 0,nuevoLargoEmpaque,materiales, !!prod.polinesFijacion?.length),
           cantidad:   cantidadTacon,
         } as TaconPieza;
       } else {
@@ -877,8 +785,9 @@ export const handleMedidasProductoChange = (
         // B) Polines abajo
         polinesAbajo: prod.polinesAbajo.map(p => ({
           ...p,
-          tipo:   nuevoTipoPolin,
+          tipo:   calcularTipoPolinAbajoPorPeso(peso ?? 0,nuevoLargoEmpaque,materiales, !!prod.polinesFijacion?.length),
           medida: nuevoLargoEmpaque,
+
         })),
 
         // C) Tacón (un solo objeto discriminado)
@@ -935,6 +844,7 @@ export const handleMedidasProductoChange = (
       };
     });
 calcularDuelas(productoId, setPedidoActivo,materiales)
+actualizarMedidasParedes(productoId, setPedidoActivo)
 handleCalcularTotales(productoId, setPedidoActivo, materiales);
     return {
       ...prev,
@@ -998,7 +908,19 @@ export const calcularMedidaCorral = (producto: Producto) => {
             return 0;
     }
 };
-
+export function recalcularGrosor(producto: Producto): number {
+  if (producto.tipoEquipo === "Tarima") {
+    return 0;
+  }
+  if (producto.tipoEquipo === "Huacal") {
+    return 4;
+  }
+  if (producto.tipoEquipo === "Caja") {
+    const t = producto.paredes?.tipoParedes?.toLowerCase() ?? "";
+    return ["tripl9", "osb12", "tripl12"].includes(t) ? 3 : 2.5;
+  }
+  return producto.grosor; // deja como estaba
+}
 export const actualizarMedidasParedes = (
   productoID: string,
   setPedidoActivo: React.Dispatch<React.SetStateAction<Costeo>>
@@ -1109,12 +1031,11 @@ export function handleImporteChange(
         // 3) Calculamos el nuevo importe de la bolsa
         const nuevoImpBolsa = nuevaCantBolsa * precioBolsa;
         // 4) Extraemos cuánto tenía antes la bolsa de antihumedad
-        const viejoImpBolsa = p.importeBolsaAntihumedad ?? 0;
+        const viejoImpBolsa = p.bolsaAntihumedad?.importeTotal ?? 0;
         // 5) Asignamos el importe recién calculado
-        updated.importeBolsaAntihumedad = nuevoImpBolsa;
+        updated.bolsaAntihumedad!.importeTotal = nuevoImpBolsa;
         // 6) Calculamos el delta y actualizamos “importeMaterialDirecto”
         const delta = nuevoImpBolsa - viejoImpBolsa;
-        console.log(nuevoImpBolsa)
         updated.importeMaterialDirecto = (p.importeMaterialDirecto ?? 0) + delta;
       }
 
@@ -1199,14 +1120,6 @@ export function getRowsForTotalesTable(
 ): MaterialTotalRow[] {
    if (!producto || !materiales) return [];
   // Materiales normales de la propiedad totales
-  const rows: MaterialTotalRow[] = (producto.totales ?? []).map((t) => ({
-    tipo: t.tipo,
-    cantidad: t.cantidad,
-    medida: t.medida,
-    precioUnitario: materiales.find(m => m.nombre === t.tipo)?.precio ?? 0,
-    precioTotal: t.precioTotal,
-  }));
-
   // Materiales extras
   const extras: MaterialTotalRow[] = [
     {
@@ -1233,12 +1146,12 @@ export function getRowsForTotalesTable(
       precioUnitario: producto.precioSENAL ?? 0,
       precioTotal: producto.importeSENAL ?? 0,
     },
-    ...(producto.bantihumedad === "Si" && producto.importeBolsaAntihumedad
+    ...(producto.bantihumedad === "Si" && producto.bolsaAntihumedad
       ? [{
           tipo: "Bolsa Antihumedad",
-          cantidad: 1,
-          precioUnitario: producto.importeBolsaAntihumedad,
-          precioTotal: producto.importeBolsaAntihumedad,
+          cantidad: producto.bolsaAntihumedad.cantidad??0,
+          precioUnitario: producto.bolsaAntihumedad.precioUnitario,
+          precioTotal: producto.bolsaAntihumedad.importeTotal,
         }]
       : []),
     ...(producto.termo === "Si" && producto.importeTermo
@@ -1253,12 +1166,25 @@ export function getRowsForTotalesTable(
 
   // Solo incluye extras que tengan importe > 0
   return [
-    ...rows,
+    ...producto.totales,
     ...extras.filter(e => !!e.precioTotal),
   ];
 }
 
 
 
-export const getPrecioExtra = (nombre: string,materiales:MaterialSuc[]): number =>
-  materiales.find(m => m.nombre === nombre)?.precio ?? 0
+export const getPrecioExtra = (
+  nombre: string,
+  materiales: { nombre: string; precio: number }[]
+): number =>
+  materiales.find(m => m.nombre === nombre)?.precio ?? 0;
+export function useAutoSaveCosteo(costeo?: Costeo, enabled = true) {
+  useEffect(() => {
+    if (!enabled || !costeo?.id) return;
+    const debouncedSave = debounce(() => {
+      actualizarCosteo(costeo);
+    }, 1000);
+    debouncedSave();
+    return () => debouncedSave.cancel();
+  }, [costeo]);
+}

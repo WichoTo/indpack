@@ -19,6 +19,8 @@
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/supabase-js": "^2.49.4",
     "cors": "^2.8.5",
+    "lodash": "^4.17.21",
+    "mathjs": "^14.5.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-number-format": "^5.4.4",
@@ -26,6 +28,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
+    "@types/lodash": "^4.17.19",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",

@@ -48,8 +48,6 @@ const CosteoModal: React.FC<CosteoModalProps> = ({
   const { empresas } = useFetchEmpresas(sucursalid);
   const { clientes } = useFetchClientes(sucursalid);
   const [selectedEmpresa, setSelectedEmpresa] = useState<Empresa | null>(null);
-console.log(clientes)
-console.log(sucursalid)
   const handleChange = (field: keyof Costeo, value: any) => {
     setCosteo(prev => ({ ...prev, [field]: value }));
   };
@@ -63,7 +61,6 @@ console.log(sucursalid)
     const prefix = `COT - ${yy} - ${mm} - `;
     const count = costeos.filter(c => c.folio?.startsWith(prefix)).length;
     const folio = `${prefix}${count + 1}-${selectedEmpresa.nombre}`;
-    console.log(folio)
     setCosteo(prev => ({ ...prev, folio }));
   }, [selectedEmpresa, costeos, setCosteo]);
 
@@ -73,7 +70,7 @@ console.log(sucursalid)
     handleChange('empresaid', empresaid);
   };
 
-  const handleUpload = async (files: FileList) => {
+  const handleUploadFormato = async (files: FileList) => {
     const nuevos: Document[] = Array.from(files).map(file => ({
       id: crypto.randomUUID(),
       nombre: file.name,
@@ -81,16 +78,54 @@ console.log(sucursalid)
     }));
     setCosteo(prev => ({
       ...prev,
-      referenciasCosteo: [...(prev.referenciasCosteo || []), ...nuevos]
+      referenciasFormatoMedidas: [...(prev.referenciasFormatoMedidas || []), ...nuevos]
     }));
   };
 
-  const handleDelete = async (doc: Document) => {
+  const handleDeleteFormato = async (doc: Document) => {
     setCosteo(prev => ({
       ...prev,
-      referenciasCosteo: (prev.referenciasCosteo || []).filter(d => d.id !== doc.id)
+      referenciasFormatoMedidas: (prev.referenciasFormatoMedidas || []).filter(d => d.id !== doc.id)
     }));
   };
+    const handleUploadComunicaciones = async (files: FileList) => {
+    const nuevos: Document[] = Array.from(files).map(file => ({
+      id: crypto.randomUUID(),
+      nombre: file.name,
+      file
+    }));
+    setCosteo(prev => ({
+      ...prev,
+      referenciasComunicaciones: [...(prev.referenciasComunicaciones || []), ...nuevos]
+    }));
+  };
+
+  const handleDeleteComunicaciones = async (doc: Document) => {
+    setCosteo(prev => ({
+      ...prev,
+      referenciasComunicaciones: (prev.referenciasComunicaciones || []).filter(d => d.id !== doc.id)
+    }));
+  };
+
+    const handleUploadImagenes = async (files: FileList) => {
+    const nuevos: Document[] = Array.from(files).map(file => ({
+      id: crypto.randomUUID(),
+      nombre: file.name,
+      file
+    }));
+    setCosteo(prev => ({
+      ...prev,
+      referenciasImagenes: [...(prev.referenciasImagenes || []), ...nuevos]
+    }));
+  };
+
+  const handleDeleteImagenes = async (doc: Document) => {
+    setCosteo(prev => ({
+      ...prev,
+      referenciasImagenes: (prev.referenciasImagenes || []).filter(d => d.id !== doc.id)
+    }));
+  };
+
 
   const handleClose = () => {
     onClose();
@@ -101,23 +136,32 @@ console.log(sucursalid)
     .map(c => ({ id: c.id, label: c.nombreCompleto }));
 
   // Al cambiar el cliente seleccionado (o escribir uno nuevo)
-  const handleClienteChange = (
-    _e: any,
-    newValue: { id?: string; label: string } | string
-  ) => {
-    if (typeof newValue === 'string') {
-      // Texto libre: cliente nuevo
-      handleChange('nombreCompleto', newValue);
-      handleChange('clienteid', undefined);
-    } else {
-      // Seleccionado de la lista: cliente existente
-      handleChange('nombreCompleto', newValue.label);
-      handleChange('clienteid', newValue.id);
-    }
-  };
+  // Dentro de CosteoModal, justo donde defines handleClienteChange:
+const handleClienteChange = (
+  _e: any,
+  newValue: { id?: string; label: string } | string
+) => {
+  if (typeof newValue === 'string') {
+    // Texto libre: cliente nuevo
+    handleChange('nombreCompleto', newValue);
+    handleChange('clienteid', undefined);
+    handleChange('correoElectronico', '');
+    handleChange('celular', '');
+  } else {
+    // Seleccionado de la lista: cliente existente
+    const clienteObj = clientes.find(c => c.id === newValue.id);
+    if (!clienteObj) return;
+
+    handleChange('nombreCompleto', clienteObj.nombreCompleto);
+    handleChange('clienteid', clienteObj.id);
+    handleChange('correoElectronico', clienteObj.correoElectronico);
+    handleChange('celular', clienteObj.celular);
+    // Si tu cliente tiene más campos, p. ej. dirección:
+    // handleChange('direccion', clienteObj.direccion);
+  }
+};
 
   
-console.log(costeo)
   return (
     <Dialog
       open={open}
@@ -281,14 +325,46 @@ console.log(costeo)
         </Box>
 
         {/* Documentos y tabla de productos */}
-        <Box mt={2}>
-          <DocumentUploadList
-            documents={costeo.referenciasCosteo || []}
-            onUpload={handleUpload}
-            onDelete={handleDelete}
-            maxFiles={10}
-          />
-        </Box>
+          <Box
+            display="grid"
+            gridTemplateColumns={{ xs: '1fr', md: 'repeat(3, 1fr)' }}
+            gap={2}
+            width="100%"
+          >
+            <Box> 
+              <Typography variant="body1" color="var(--primary-color)">
+                Formato Medida
+              </Typography>
+              <DocumentUploadList
+                documents={costeo.referenciasFormatoMedidas || []}
+                onUpload={handleUploadFormato}
+                onDelete={handleDeleteFormato}
+                maxFiles={10}
+              />
+            </Box>
+            <Box> 
+              <Typography variant="body1" color="var(--primary-color)">
+                Referencias Comunicaciones
+              </Typography>
+              <DocumentUploadList
+                documents={costeo.referenciasComunicaciones || []}
+                onUpload={handleUploadComunicaciones}
+                onDelete={handleDeleteComunicaciones}
+                maxFiles={10}
+              />
+            </Box>
+            <Box> 
+              <Typography variant="body1" color="var(--primary-color)">
+                Imagenes
+              </Typography>
+              <DocumentUploadList
+                documents={costeo.referenciasImagenes || []}
+                onUpload={handleUploadImagenes}
+                onDelete={handleDeleteImagenes}
+                maxFiles={10}
+              />
+            </Box>
+          </Box>
         <Box mt={2}>
           <TablaProductos
             costeo={costeo}

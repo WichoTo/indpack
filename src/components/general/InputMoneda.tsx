@@ -3,7 +3,7 @@ import React from 'react';
 import { NumericFormat, NumericFormatProps, NumberFormatValues } from 'react-number-format';
 
 interface CurrencyFormatCustomProps extends Omit<NumericFormatProps, 'onValueChange'> {
-  onChange?: (event: { target: { name: string; value: string } }) => void;
+  onChange: (event: { target: { name: string; value: string } }) => void;
   name: string;
 }
 
@@ -16,7 +16,6 @@ const CurrencyFormatCustom = React.forwardRef<NumericFormatProps, CurrencyFormat
         getInputRef={ref}
         style={{ height: '100%', ...style }}
         onValueChange={(values: NumberFormatValues) => {
-          if (!onChange) return;
           onChange({
             target: {
               name,

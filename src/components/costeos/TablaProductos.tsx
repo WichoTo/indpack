@@ -23,7 +23,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { Costeo,PolinFijacion,Producto, Tacon, TipoCorral } from "../../config/types.tsx"
 import ConfirmDialog from "../general/DialogComponent.tsx";
 import {  useFetchMaterialesSuc } from "../../hooks/useFetchFunctions.tsx";
-import { actualizarCodigoEquipo, actualizarMedidasParedes, calcularCantidadLargueros, calcularCantidadPostes, calcularTipoPolin, calcularTipoTabla, handleCalcularMedidaCorral, handleCalcularTotales, handleMedidasProductoChange, handleProductoChange, recalcularCodigosProductos } from "../../hooks/useFetchCosteo.tsx";
+import { actualizarCodigoEquipo, actualizarMedidasParedes, calcularCantidadLargueros, calcularCantidadPostes, calcularTipoPolin, calcularTipoTabla, handleCalcularMedidaCorral, handleCalcularTotales, handleMedidasProductoChange, handleProductoChange, recalcularCodigosProductos, recalcularGrosor } from "../../hooks/useFetchCosteo.tsx";
 import { formatoMoneda } from "../../hooks/useUtilsFunctions.tsx";
 import ModalInfoProducto from "./ModalInfoProducto.tsx";
 
@@ -123,13 +123,13 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
   
         polinesFijacion: [] as PolinFijacion[],
         tendido: {
-          tipo: calcularTipoTabla(0,materiales),
+          tipo: "T7/8",
           cantidad: parseFloat((largoEmpaque / 14).toFixed(2)),
           extra: 0,
           medida: anchoEmpaque,
         },
         paredes: {
-        tipoParedes: "",
+        tipoParedes: "OSB12",
         largo2y4: anchoEmpaque,
         alto2y4: altoEmpaque,
         largo1y3: largoEmpaque,
@@ -170,7 +170,7 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
   const montoTotal = useMemo(() => {
     return costeo.productos.reduce((total, producto) => {
       
-      return total + producto.importeTotalFinanciamiento!;
+      return total + producto.importeTotal!;
     }, 0);
   }, [costeo.productos]);
   
@@ -296,6 +296,7 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
                       handleProductoChange(event.target.value,"cantidad", setCosteo, producto?.id ?? "",materiales)
                       if (producto?.id) {
                         recalcularCodigosProductos(setCosteo);
+                        handleCalcularTotales(producto.id, setCosteo, materiales);
                       }
                     }}
                   />
@@ -306,7 +307,26 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
                   size="small"
                   name="tipoEquipo"
                   value={producto.tipoEquipo || ""}
-                  onChange={(event) => handleProductoChange(event.target.value,"tipoEquipo", setCosteo, producto?.id ?? "",materiales)}
+                  onChange={event => {
+                      const nuevoTipo = event.target.value as string;
+                      handleProductoChange(nuevoTipo, "tipoEquipo", setCosteo, producto.id, materiales);
+
+                      // 1) Calcular y actualizar grosor
+                      setCosteo(prev => ({
+                        ...prev,
+                        productos: prev.productos.map(p =>
+                          p.id === producto.id
+                            ? { ...p, grosor: recalcularGrosor({ ...p, tipoEquipo: nuevoTipo }) }
+                            : p
+                        )
+                      }));
+
+                      // 2) Disparar recálculos
+                      handleMedidasProductoChange(producto.id, setCosteo, materiales);
+                      handleCalcularMedidaCorral(producto.id, setCosteo, materiales);
+                      handleCalcularTotales(producto.id, setCosteo, materiales);
+                      actualizarMedidasParedes(producto.id, setCosteo);
+                    }}
                   displayEmpty
                   fullWidth
                   sx={{minWidth: "120px"}}
@@ -324,7 +344,10 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
                   size="small"
                   name="servicio"
                   value={producto.servicio || ""}
-                  onChange={(event) => handleProductoChange(event.target.value,"servicio", setCosteo, producto?.id ?? "",materiales)}
+                  onChange={(event) =>{ handleProductoChange(event.target.value,"servicio", setCosteo, producto?.id ?? "",materiales)
+                     if(producto?.id){
+                      handleCalcularTotales(producto.id, setCosteo, materiales);
+                    }}}
                   displayEmpty
                   fullWidth
                   sx={{minWidth: "120px"}}
@@ -341,7 +364,11 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
                   size="small"
                   name="equipo"
                   value={producto.equipo || ""}
-                  onChange={(event) => handleProductoChange(event.target.value,"equipo", setCosteo, producto?.id ?? "",materiales)}
+                  onChange={(event) =>{ handleProductoChange(event.target.value,"equipo", setCosteo, producto?.id ?? "",materiales)
+                     if(producto?.id){
+                      handleCalcularTotales(producto.id, setCosteo, materiales);
+                    }}}
+                  
                   sx={{minWidth: "320px"}}
                 />
               </TableCell>
@@ -430,7 +457,11 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
                   size="small"
                   name="bantihumedad"
                   value={producto.bantihumedad || ""}
-                  onChange={(event) => handleProductoChange(event.target.value,"bantihumedad", setCosteo, producto?.id ?? "",materiales)}
+                  onChange={(event) =>{ handleProductoChange(event.target.value,"bantihumedad", setCosteo, producto?.id ?? "",materiales)
+                     if(producto?.id){
+                      handleCalcularTotales(producto.id, setCosteo, materiales);
+                    }}
+                  }
                   displayEmpty
                   fullWidth
                   sx={{minWidth: "120px"}}
@@ -456,16 +487,17 @@ const TablaProductos: React.FC<TablaProductosProps> = ({ costeo, setCosteo ,sucu
                   <MenuItem value="No">No</MenuItem>
                 </Select>
               </TableCell>
-              <TableCell padding="none" sx={{ px: 1, py: 0.5, color: 'var(--primary-color)', fontWeight: 'bold' }}>{formatoMoneda(producto.precioUnitario)}</TableCell>
+              
               {mostrarBolsa && (
-                <TableCell padding="none" sx={{ px: 1, py: 0.5, color: 'var(--primary-color)', fontWeight: 'bold' }}>{formatoMoneda(String(producto.importeBolsaAntihumedad ?? 0))}</TableCell>
+                <TableCell padding="none" sx={{ px: 1, py: 0.5, color: 'var(--primary-color)', fontWeight: 'bold' }}>{formatoMoneda(String(producto.bolsaAntihumedad?.importeTotal ?? 0))}</TableCell>
               )}
 
 
               {mostrarTermo && (
                 <TableCell padding="none" sx={{ px: 1, py: 0.5, color: 'var(--primary-color)', fontWeight: 'bold' }}>{formatoMoneda(String(producto.importeTermo))}</TableCell>
               )}
-              <TableCell padding="none" sx={{ px: 1, py: 0.5, color: 'var(--primary-color)', fontWeight: 'bold' }}>{formatoMoneda( producto.importeTotalFinanciamiento!)}</TableCell>
+              <TableCell padding="none" sx={{ px: 1, py: 0.5, color: 'var(--primary-color)', fontWeight: 'bold' }}>{formatoMoneda(producto.precioUnitario)}</TableCell>
+              <TableCell padding="none" sx={{ px: 1, py: 0.5, color: 'var(--primary-color)', fontWeight: 'bold' }}>{formatoMoneda( producto.importeTotal!)}</TableCell>
               <TableCell padding="none" sx={{ px: 1, py: 0.5, color: 'var(--primary-color)', fontWeight: 'bold' }}>
                 <IconButton onClick={() => handleAbrirModal(producto)} sx={{ color: "gray" }}>
                   <VisibilityIcon />

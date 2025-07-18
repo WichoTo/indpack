@@ -2,7 +2,7 @@
 import React from 'react';
 import { Box, Typography, IconButton } from '@mui/material';
 import { Costeo, Producto, Material } from '../../config/types';
-import { calcularTipoPolin, handleCalcularTotales } from '../../hooks/useFetchCosteo';
+import { calcularTipoPolinAbajoPorPeso, handleCalcularTotales } from '../../hooks/useFetchCosteo';
 import PolinAbajoRow from './PolinAbajoRow';
 import AddIcon from "@mui/icons-material/Add";
 
@@ -35,7 +35,7 @@ const PolinesAbajoFullRow: React.FC<Props> = ({
                   ...(prod.polinesAbajo ?? []),
                   {
                     id: crypto.randomUUID(),
-                    tipo: calcularTipoPolin(prod.peso ?? 0, materiales),
+                    tipo: calcularTipoPolinAbajoPorPeso(producto.peso ?? 0,producto.largoEmpaque,materiales, !!producto.polinesFijacion?.length),
                     cantidad: 3,
                     medida: prod.largoEmpaque
                   }
@@ -47,6 +47,7 @@ const PolinesAbajoFullRow: React.FC<Props> = ({
     });
     handleCalcularTotales(producto.id, setCosteo, materiales);
   };
+
 
   return (
     <>
@@ -63,6 +64,7 @@ const PolinesAbajoFullRow: React.FC<Props> = ({
         {producto.polinesAbajo?.map((p, i) => (
           <PolinAbajoRow
             key={`${producto.id}-pa-${i}`}   // aquí ya no usas p.id
+            producto={producto}
             polin={p}
             index={i}
             productoId={producto.id}

@@ -768,7 +768,6 @@ export const useFetchCosteos = (sucursalid?: string) => {
           event: '*',
           schema: 'public',
           table: 'costeo',
-          filter: `sucursalid=eq.${sucursalid}`,
         },
         () => {
           fetchCosteos();
@@ -826,76 +825,90 @@ export async function actualizarCosteo(
   const storage = supabase.storage.from('costeos');
   const uploadedPaths: string[] = [];
 
-  // Sube un documento, o lo devuelve si ya existe (igual que antes)
+  // Sube un documento y devuelve el Document completo con path/url
   async function uploadDoc(doc: Document): Promise<Document> {
     if (!doc.file) return doc;
     const safeName = normalizeFileName(doc.file.name);
     const path = `${costeo.id}/${safeName}`;
+    // eliminamos cualquier versión previa
     await storage.remove([path]).catch(() => {});
+    // subimos
     const { error: uploadError } = await storage.upload(path, doc.file, {
       upsert: true,
     });
     if (uploadError) throw uploadError;
     uploadedPaths.push(path);
-    return { id: path, nombre: doc.file.name, url: path, path, bucket: 'costeos' };
+    return { 
+      id: path, 
+      nombre: doc.file.name, 
+      url: path, 
+      path, 
+      bucket: 'costeos' 
+    };
   }
 
-  // 1) Procesamos referenciasCosteo
-  const refs = costeo.referenciasCosteo ?? [];
-  const referenciasProcesadas = await Promise.all(refs.map(uploadDoc));
+  // 1) Procesar cada lista de referencias por separado
+  const refsFormato   = costeo.referenciasFormatoMedidas   ?? [];
+  const refsComunic  = costeo.referenciasComunicaciones   ?? [];
+  const refsImagenes = costeo.referenciasImagenes         ?? [];
 
-  // 2) Procesamos el cliente único
+  const [ formatoProcesadas,
+          comunicProcesadas,
+          imagenesProcesadas ] = await Promise.all([
+    Promise.all(refsFormato.map(uploadDoc)),
+    Promise.all(refsComunic.map(uploadDoc)),
+    Promise.all(refsImagenes.map(uploadDoc)),
+  ]);
+
+  // 2) Mantenimiento/creación del cliente (igual que antes) …
   let clienteid = costeo.clienteid;
-const clienteData = {
-  nombreCompleto: costeo.nombreCompleto,
-  correoElectronico: costeo.correoElectronico,
-  celular: costeo.celular,
-  empresaid: costeo.empresaid,
-  sucursalid: costeo.sucursalid
-};
+  const clienteData = {
+    nombreCompleto: costeo.nombreCompleto,
+    correoElectronico: costeo.correoElectronico,
+    celular: costeo.celular,
+    empresaid: costeo.empresaid,
+    sucursalid: costeo.sucursalid
+  };
 
-if (clienteid) {
-  // Si ya venía con ID, actualizamos
-  const { error: errUpd } = await supabase
-    .from('clientes')
-    .update(clienteData)
-    .eq('id', clienteid);
-  if (errUpd) throw errUpd;
-} else {
-  // Nuevo cliente: insert + select
-  const insertResult = await supabase
-    .from('clientes')
-    .insert(clienteData)
-    .select();
-  if (insertResult.error) throw insertResult.error;
-
-  const nuevos = insertResult.data;
-  if (nuevos && nuevos.length > 0) {
-    // Todo OK, recuperamos el id
-    clienteid = nuevos[0].id;
-  } else {
-    // Fallback: buscamos por correo+empresaid
-    const { data: found, error: errFind } = await supabase
+  if (clienteid) {
+    const { error: errUpd } = await supabase
       .from('clientes')
-      .select('id')
-      .eq('correo', costeo.correoElectronico)
-      .eq('empresaid', costeo.empresaid)
-      .limit(1)
-      .single();
-    if (errFind) throw errFind;
-    clienteid = found.id;
+      .update(clienteData)
+      .eq('id', clienteid);
+    if (errUpd) throw errUpd;
+  } else {
+    const insertResult = await supabase
+      .from('clientes')
+      .insert(clienteData)
+      .select();
+    if (insertResult.error) throw insertResult.error;
+    const nuevos = insertResult.data!;
+    if (nuevos.length > 0) {
+      clienteid = nuevos[0].id;
+    } else {
+      const { data: found, error: errFind } = await supabase
+        .from('clientes')
+        .select('id')
+        .eq('correo', costeo.correoElectronico)
+        .eq('empresaid', costeo.empresaid)
+        .limit(1)
+        .single();
+      if (errFind) throw errFind;
+      clienteid = found.id;
+    }
   }
-}
 
-// 3) Creamos el payload e incluimos clienteid…
-const payload: Costeo = {
-  ...costeo,
-  clienteid,
-  referenciasCosteo: referenciasProcesadas
-};
+  // 3) Payload incluyendo las tres listas procesadas
+  const payload: Costeo = {
+    ...costeo,
+    clienteid,
+    referenciasFormatoMedidas: formatoProcesadas,
+    referenciasComunicaciones: comunicProcesadas,
+    referenciasImagenes:       imagenesProcesadas,
+  };
 
   try {
-    // 4) Hacemos upsert en costeo
+    // 4) Upsert en la tabla "costeo"
     const { data, error } = await supabase
       .from('costeo')
       .upsert(payload, { onConflict: 'id' })
@@ -903,7 +916,7 @@ const payload: Costeo = {
     if (error) throw error;
     return data![0];
   } catch (err) {
-    // Si algo falla, limpiamos los archivos recién subidos
+    // en caso de error, eliminamos lo subido
     if (uploadedPaths.length) {
       await storage.remove(uploadedPaths).catch(() => {});
     }
@@ -911,65 +924,16 @@ const payload: Costeo = {
   }
 }
 
-export async function actualizarCosteo2(
-  costeo: Costeo
-): Promise<Costeo> {
-  const storage = supabase.storage.from('costeos')
-  const uploadedPaths: string[] = []
 
-  // Sube un documento, o lo devuelve si ya existe (no tiene .file)
-  async function uploadDoc(doc: Document): Promise<Document> {
-    if (!doc.file) {
-      // ya era un documento existente en el bucket
-      return doc
-    }
-    const safeName = normalizeFileName(doc.file.name)
-    const path = `${costeo.id}/${safeName}`
-
-    // elimina la versión anterior (si la hay) y sube la nueva
-    await storage.remove([path]).catch(() => {})
-    const { error: uploadError } = await storage.upload(path, doc.file, {
-      upsert: true,
-    })
-    if (uploadError) throw uploadError
-
-    uploadedPaths.push(path)
-    return {
-      id: path,
-      nombre: doc.file.name,
-      url: path,
-      path,
-      bucket: 'costeos',
-    }
-  }
-
-  // 1) Procesamos referenciasCosteo
-  const refs = costeo.referenciasCosteo ?? []
-  const referenciasProcesadas = await Promise.all(refs.map(uploadDoc))
-
-  // 2) Armamos el payload con las referencias ya subidas
-  const payload: Costeo = {
-    ...costeo,
-    referenciasCosteo: referenciasProcesadas,
-  }
-
-  try {
-    // 3) Upsert en Supabase (conflicto por id)
-    const { data, error } = await supabase
-      .from('costeo')
-      .upsert(payload, { onConflict: 'id' })
-      .select()
-    if (error) throw error
-
-    // devolvemos la fila resultante
-    return data![0]
-  } catch (err) {
-    // En caso de fallo, limpiamos los archivos recién subidos
-    if (uploadedPaths.length) {
-      await storage.remove(uploadedPaths).catch(() => {})
-    }
-    throw err
-  }
-}
+export const eliminarCosteo = async (id: string): Promise<void> => {
+  if (!id) throw new Error('No se especificó el ID del costeo.');
+  // Opcional: elimina archivos en storage si los tienes (no incluido aquí)
+  console.log(`Eliminando costeo con ID: ${id}`);
+  const { error } = await supabase
+    .from('costeo')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+};
 
 

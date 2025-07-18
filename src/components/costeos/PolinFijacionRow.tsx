@@ -1,8 +1,8 @@
 import React from 'react';
 import {  TextField, FormControl, InputLabel, Select, MenuItem, IconButton, Box } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { Costeo,  Material, PolinFijacion } from '../../config/types';
-import { handleCalcularTotales } from '../../hooks/useFetchCosteo';
+import { Costeo,  Material, PolinFijacion, Producto } from '../../config/types';
+import { calcularTipoPolinAbajoPorPeso, handleCalcularTotales } from '../../hooks/useFetchCosteo';
 
 interface Props {
   polin: PolinFijacion;
@@ -51,18 +51,38 @@ const PolinFijacionRow: React.FC<Props> = ({
       if (!prev) return prev;
       return {
         ...prev,
-        productos: prev.productos.map(prod =>
-          prod.id === productoId
-            ? {
-                ...prod,
-                polinesFijacion: prod.polinesFijacion.filter((_, i) => i !== index),
-              }
-            : prod
-        ),
+        productos: prev.productos.map(prod => {
+          if (prod.id !== productoId) return prod;
+          // 1. Elimina el polin de fijación
+          const newPF = prod.polinesFijacion.filter((_, i) => i !== index);
+          const updated = { ...prod, polinesFijacion: newPF };
+          // 2. RE-calcula polinesAbajo si corresponde
+          return recalcularPolinesAbajoPorPolinesFijacion(updated, materiales);
+        }),
       };
     });
     handleCalcularTotales(productoId, setCosteo, materiales);
   };
+ function recalcularPolinesAbajoPorPolinesFijacion(producto: Producto, materiales: Material[]): Producto {
+  const llevaPolinFijacion = !!(producto.polinesFijacion && producto.polinesFijacion.length);
+
+  // Si no hay polinesAbajo, regresa igual
+  if (!producto.polinesAbajo?.length) return producto;
+
+  const nuevosPolinesAbajo = producto.polinesAbajo.map(pol =>
+    ({
+      ...pol,
+      tipo: calcularTipoPolinAbajoPorPeso(
+        producto.peso ?? 0,
+        producto.largoEmpaque,  // o la medida que uses para polinesAbajo
+        materiales,
+        llevaPolinFijacion
+      ),
+    })
+  );
+
+  return { ...producto, polinesAbajo: nuevosPolinesAbajo };
+}
 
   return (
     <Box  display="grid" gridTemplateColumns={{ xs: '1fr',  sm: '1fr 1fr 1fr 1fr '}} gap={2}  alignItems="center">

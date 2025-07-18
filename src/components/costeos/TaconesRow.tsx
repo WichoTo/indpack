@@ -16,7 +16,7 @@ import {
   TipoTacon,
   Tacon
 } from '../../config/types';
-import { calcularTipoPolin, handleCalcularTotales } from '../../hooks/useFetchCosteo';
+import {  calcularTipoPolinAbajoPorPeso, handleCalcularTotales } from '../../hooks/useFetchCosteo';
 
 interface TaconesRowProps {
   producto: Producto;
@@ -27,6 +27,7 @@ interface TaconesRowProps {
 }
 
 const TaconesRow: React.FC<TaconesRowProps> = ({ producto,  setCosteo, materiales, tiposMateriales }) => {
+  //const tipoPolinComun = producto.polinesAbajo?.[0]?.tipo || '';
   const onTipoChange = (nuevoTipo: TipoTacon) => {
     setCosteo(prev => {
       if (!prev) return prev;
@@ -36,13 +37,13 @@ const TaconesRow: React.FC<TaconesRowProps> = ({ producto,  setCosteo, materiale
           if (p.id !== producto.id) return p;
           if (nuevoTipo === 'Corrido') {
             // inicializar tacon corrido
-            const tipoPolin = calcularTipoPolin( p.peso ?? 0, materiales);
+            const tipoPolin = calcularTipoPolinAbajoPorPeso(producto.peso ?? 0,producto.largoEmpaque,materiales, !!producto.polinesFijacion?.length);
             return {
               ...p,
               tipoTacon: 'Corrido',
               tacon: {
                 tipoCorral: 'Corrido',
-                tipoPolin,
+                tipoPolin,  
                 cantidad: 3,
                 medida: p.anchoEmpaque
               } as TaconCorrido
@@ -50,7 +51,7 @@ const TaconesRow: React.FC<TaconesRowProps> = ({ producto,  setCosteo, materiale
           }
           if (nuevoTipo === 'Pieza') {
             // inicializar tacon por pieza con default cantidad 0 y polin calculado
-            const tipoPolin = calcularTipoPolin( p.peso ?? 0, materiales);
+            const tipoPolin = calcularTipoPolinAbajoPorPeso(producto.peso ?? 0,producto.largoEmpaque,materiales, !!producto.polinesFijacion?.length);
             return {
               ...p,
               tipoTacon: 'Pieza',
