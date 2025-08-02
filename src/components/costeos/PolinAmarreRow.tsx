@@ -4,7 +4,9 @@ import {
   Select,
   MenuItem,
   TextField,
-  Typography
+  Typography,
+  Paper,
+  Divider
 } from '@mui/material';
 import {
   Costeo,
@@ -17,8 +19,8 @@ interface Props {
   producto: Producto;
   costeo: Costeo;
   setCosteo: React.Dispatch<React.SetStateAction<Costeo>>;
-  materiales:Material[]
-  tiposMateriales:Record<string, string[]>
+  materiales: Material[];
+  tiposMateriales: Record<string, string[]>;
 }
 
 const PolinAmarreRow: React.FC<Props> = ({
@@ -27,28 +29,40 @@ const PolinAmarreRow: React.FC<Props> = ({
   materiales,
   tiposMateriales
 }) => {
-  
-
-
-
   return (
-    <>
-    <Box display="grid" gridTemplateColumns={{ xs: '1fr',  sm: '1fr 1fr 1fr'}} gap={2} mb={1} alignItems="center">
-      <Box sx={{ gridColumn: 'span 3' }}>
-        <Typography variant="h6" sx={{ fontWeight: "bold", mt:1, color: "var(--primary-color)" }}>
-            POLIN AMARRE
+    <Paper
+      variant="outlined"
+      sx={{
+        p: { xs: 2, md: 3 },
+        mb: 2,
+        background: "#f9fafd",
+        borderLeft: "4px solid var(--primary-color)",
+      }}
+    >
+      <Box mb={2}>
+        <Typography variant="h6" fontWeight={800} color="var(--primary-color)">
+          Polín Amarre
         </Typography>
+        <Divider sx={{ mt: 1 }} />
       </Box>
-              
-      <Box>
+      <Box
+        display="grid"
+        gridTemplateColumns={{
+          xs: '1fr',
+          sm: '1fr 1fr 1fr'
+        }}
+        gap={2}
+        alignItems="center"
+      >
+        {/* Cantidad */}
         <TextField
-              size="small"
-              margin="dense"
+          size="small"
+          margin="dense"
           fullWidth
-          label="Cantidad Polín Amarre"
+          label="Cantidad"
           type="number"
           name="cantidad"
-          value={producto?.polinAmarre?.cantidad || 0}
+          value={producto?.polinAmarre?.cantidad ?? 0}
           onChange={(e) => {
             const nuevaCantidad = parseFloat(e.target.value) || 0;
             setCosteo((prevPedido) => {
@@ -72,15 +86,16 @@ const PolinAmarreRow: React.FC<Props> = ({
               handleCalcularTotales(producto.id, setCosteo, materiales);
             }
           }}
+          inputProps={{ min: 0 }}
         />
-      </Box>
-      <Box>
+
+        {/* Tipo de polín */}
         <Select
-              size="small"
-              margin="dense"
+          size="small"
+          margin="dense"
           fullWidth
           name="tipoPolin"
-          value={producto?.polinAmarre?.tipoPolin || calcularTipoPolin(producto.peso??0,materiales)}
+          value={producto?.polinAmarre?.tipoPolin || calcularTipoPolin(producto.peso ?? 0, materiales)}
           onChange={(e) => {
             const nuevoTipoPolin = e.target.value;
             setCosteo((prev) => {
@@ -105,24 +120,25 @@ const PolinAmarreRow: React.FC<Props> = ({
             }
           }}
           displayEmpty
-          renderValue={(value) => (value ? value : "Selecciona un tipo de polín")}
+          renderValue={(value) => (value ? value : "Tipo de polín")}
         >
+          <MenuItem value="">Tipo de polín</MenuItem>
           {tiposMateriales.Polines.map((valor) => (
             <MenuItem key={valor} value={valor}>
               {valor}
             </MenuItem>
           ))}
         </Select>
-      </Box>
-      <Box>
+
+        {/* Medida */}
         <TextField
-              size="small"
-              margin="dense"
+          size="small"
+          margin="dense"
           fullWidth
-          label="Medida Polín Amarre"
+          label="Medida (cm)"
           type="number"
           name="medida"
-          value={producto?.polinAmarre?.medida || producto?.anchoEmpaque}
+          value={producto?.polinAmarre?.medida ?? producto?.anchoEmpaque ?? 0}
           onChange={(e) => {
             const nuevaMedida = parseFloat(e.target.value) || producto?.anchoEmpaque || 0;
             setCosteo((prev) => {
@@ -148,9 +164,7 @@ const PolinAmarreRow: React.FC<Props> = ({
           }}
         />
       </Box>
-      
-    </Box>
-    </>
+    </Paper>
   );
 };
 

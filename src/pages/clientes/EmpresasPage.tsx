@@ -10,9 +10,12 @@ import {
   TableHead,
   Paper,
   Typography,
+  Stack,
+  Button,
 } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AddIcon from '@mui/icons-material/Add';
 import EmpresaModal from '../../components/empresas/EmpresaModal';
 import DialogComponent from '../../components/general/DialogComponent';
 
@@ -95,50 +98,71 @@ const PageEmpresas: React.FC = () => {
   return (
     <>
       {loading && <Spinner open />}
-      <Box>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h6">Empresas</Typography>
-          <IconButton color="primary" onClick={openModal}>
-            <BusinessIcon />
-          </IconButton>
-        </Box>
-        <TableContainer component={Paper} style={{ padding: 5, overflowY: 'auto' }}>
+      <Box maxWidth="lg" sx={{ mx: 'auto', mt: 4, p: { xs: 1, md: 3 } }}>
+        {/* Header */}
+        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={3}>
+          <Stack direction="row" alignItems="center" gap={1}>
+            <BusinessIcon color="primary" sx={{ fontSize: 36 }} />
+            <Typography variant="h4" fontWeight={700}>Empresas</Typography>
+          </Stack>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={openModal}
+            sx={{ fontWeight: 600, boxShadow: 2 }}
+          >
+            Agregar Empresa
+          </Button>
+        </Stack>
+
+        <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2 }}>
           <Table stickyHeader>
             <TableHead>
-              <TableRow sx={{ backgroundColor: 'var(--primary-color)', color: '#fff' }}>
-                <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: '#fff' }}>Nombre</TableCell>
-                <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: '#fff' }}>Contacto</TableCell>
-                <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: '#fff' }}>Correo Contacto</TableCell>
-                <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: '#fff' }}>Teléfono</TableCell>
-                {role === 'Gerente' && <TableCell />}
+              <TableRow>
+                <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: '#fff', fontWeight: 700 }}>Nombre</TableCell>
+                <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: '#fff', fontWeight: 700 }}>Contacto</TableCell>
+                <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: '#fff', fontWeight: 700 }}>Correo Contacto</TableCell>
+                <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: '#fff', fontWeight: 700 }}>Teléfono</TableCell>
+                {role === 'Gerente' && <TableCell sx={{ backgroundColor: 'var(--primary-color)' }} />}
               </TableRow>
             </TableHead>
             <TableBody>
-              {empresasFiltradas.map(emp => (
-                <TableRow
-                  key={emp.id}
-                  onClick={() => openEditModal(emp)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <TableCell>{emp.nombre}</TableCell>
-                  <TableCell>{emp.nombrecontacto}</TableCell>
-                  <TableCell>{emp.correoconctacto}</TableCell>
-                  <TableCell>{emp.telefono}</TableCell>
-                  {role === 'Gerente' && (
-                    <TableCell>
-                      <IconButton
-                        color="error"
-                        onClick={e => {
-                          e.stopPropagation();
-                          openConfirm(emp);
-                        }}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  )}
+              {empresasFiltradas.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                    <Typography color="text.secondary">No hay empresas registradas.</Typography>
+                  </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                empresasFiltradas.map(emp => (
+                  <TableRow
+                    key={emp.id}
+                    hover
+                    sx={{ cursor: 'pointer', transition: 'background 0.2s' }}
+                    onClick={() => openEditModal(emp)}
+                  >
+                    <TableCell>{emp.nombre}</TableCell>
+                    <TableCell>{emp.nombrecontacto}</TableCell>
+                    <TableCell>{emp.correoconctacto}</TableCell>
+                    <TableCell>{emp.telefono}</TableCell>
+                    {role === 'Gerente' && (
+                      <TableCell>
+                        <IconButton
+                          color="error"
+                          onClick={e => {
+                            e.stopPropagation();
+                            openConfirm(emp);
+                          }}
+                          aria-label="Eliminar empresa"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </TableContainer>

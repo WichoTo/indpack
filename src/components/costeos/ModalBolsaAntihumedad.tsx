@@ -16,14 +16,15 @@ import {
   TableHead
 } from "@mui/material";
 import CloseIcon from '@mui/icons-material/Close';
-import {  MaterialSuc, Producto } from "../../config/types";
+import { MaterialSuc, Producto } from "../../config/types";
 import { handleCalcularTotales, handleImporteChange } from "../../hooks/useFetchCosteo";
+
 interface ModalBolsaAntihumedadProps {
   open: boolean;
   onClose: () => void;
-  productoActivo: any; // Usa tu tipo Producto si lo tienes
+  productoActivo: any;
   setPedidoActivo: React.Dispatch<React.SetStateAction<any>>;
-  materiales:MaterialSuc[]
+  materiales: MaterialSuc[];
 }
 
 const ModalBolsaAntihumedad: React.FC<ModalBolsaAntihumedadProps> = ({
@@ -33,457 +34,367 @@ const ModalBolsaAntihumedad: React.FC<ModalBolsaAntihumedadProps> = ({
   setPedidoActivo,
   materiales
 }) => {
-useEffect(() => {
-  if (productoActivo?.id) {
-    // 1. Simula el evento para handleImporteChange
-    const eventLike = {
-      target: {
-        name: "cantidadBolsa",
-        value: productoActivo.bolsaAntihumedad?.cantidad ?? 0
-      }
-    } as React.ChangeEvent<HTMLInputElement>;
+  useEffect(() => {
+    if (productoActivo?.id) {
+      const eventLike = {
+        target: {
+          name: "bolsaAntihumedad.cantidad",
+          value: productoActivo.bolsaAntihumedad?.cantidad ?? 0
+        }
+      } as React.ChangeEvent<HTMLInputElement>;
 
-    handleImporteChange(eventLike, setPedidoActivo, materiales, productoActivo);
+      handleImporteChange(eventLike, setPedidoActivo, materiales, productoActivo);
+      handleCalcularTotales(productoActivo.id, setPedidoActivo, materiales);
+    }
+    // eslint-disable-next-line
+  }, [
+    productoActivo?.bolsaAntihumedad
+  ])
 
-    // 2. Luego recalcula totales (opcional: puedes dejar solo uno, el otro ya recalcula totales)
-    handleCalcularTotales(productoActivo.id, setPedidoActivo, materiales);
-  }
-}, [
-  productoActivo?.bolsaAntihumedad
-]);
+  // --- Colores para una mejor visual
+  const fondoBase = "#fffde7";   // amarillo suave
+  const fondoVerde = "#e8f5e9";  // verde claro
+  const inputReadOnly = {
+    bgcolor: "#f5f5f5",
+    fontWeight: "bold",
+    borderRadius: 1,
+    "& input": { textAlign: "center", fontWeight: "bold", bgcolor: "#f5f5f5" }
+  };
+  const inputEditable = {
+    bgcolor: "#fff",
+    fontWeight: "bold",
+    borderRadius: 1,
+    "& input": { textAlign: "center", fontWeight: "bold", bgcolor: "#fff" }
+  };
 
+  // --- Helpers para respetar el 0 (no usar ||)
+  const safeValue = (val: any) => (val === undefined || val === null) ? '' : val;
 
   return (
     <Dialog
-        open={open}
-        onClose={(_, reason) =>
-          reason === 'backdropClick' ? undefined : onClose()
-        }
-        // desactivamos los anchos por defecto
-        fullWidth={false}
-        maxWidth={false}
-      >
-        <IconButton
-          onClick={onClose}
-          sx={{ position: "absolute", top: 8, right: 8 }}
-        >
+      open={open}
+      onClose={(_, reason) => (reason === 'backdropClick' ? undefined : onClose())}
+      fullWidth
+      maxWidth="md"
+      PaperProps={{ sx: { borderRadius: 4 } }}
+    >
+      <Box sx={{ position: "absolute", top: 14, right: 14, zIndex: 10 }}>
+        <IconButton color="primary" onClick={onClose}>
           <CloseIcon />
         </IconButton>
-        <DialogTitle
-          sx={{
-            color: "white",
-            backgroundColor: "var(--secondary-color)",
-          }}
-        >Cálculo de Bolsa Antihumedad</DialogTitle>
-      <DialogContent>
-        <Box mt={2} display="flex" flexDirection="row" gap={2} alignItems="center">
+      </Box>
+      <DialogTitle
+        sx={{
+          color: "#fff",
+          backgroundColor: "var(--secondary-color, #263238)",
+          fontWeight: "bold",
+          fontSize: 22,
+          pb: 1.2,
+          borderTopLeftRadius: 16,
+          borderTopRightRadius: 16,
+        }}
+      >
+        Cálculo de Bolsa Antihumedad
+        <Typography fontSize={13} fontWeight={400} color="white">
+          Ajusta sólo las celdas verdes para recalcular.
+        </Typography>
+      </DialogTitle>
+      <DialogContent sx={{ pt: 2.5, pb: 2, background: "#fafbfc" }}>
+        {/* Dimensiones generales */}
+        <Box display="flex" gap={2} mb={2} flexWrap="wrap">
           <Box>
-            <Typography variant="caption">LARGO</Typography>
+            <Typography variant="caption" fontWeight={700} color="text.secondary">LARGO</Typography>
             <TextField
-              value={productoActivo?.largoEquipo ?? ""}
+              value={safeValue(productoActivo?.largoEquipo)}
               type="number"
               size="small"
               fullWidth
+              InputProps={{ readOnly: true, sx: inputReadOnly }}
             />
           </Box>
           <Box>
-            <Typography variant="caption">ANCHO</Typography>
+            <Typography variant="caption" fontWeight={700} color="text.secondary">ANCHO</Typography>
             <TextField
-              value={productoActivo?.anchoEquipo ?? ""}
+              value={safeValue(productoActivo?.anchoEquipo)}
               type="number"
               size="small"
               fullWidth
+              InputProps={{ readOnly: true, sx: inputReadOnly }}
             />
           </Box>
           <Box>
-            <Typography variant="caption">ALTO</Typography>
+            <Typography variant="caption" fontWeight={700} color="text.secondary">ALTO</Typography>
             <TextField
-              value={productoActivo?.altoEquipo ?? ""}
+              value={safeValue(productoActivo?.altoEquipo)}
               type="number"
               size="small"
               fullWidth
+              InputProps={{ readOnly: true, sx: inputReadOnly }}
             />
           </Box>
           <Box>
-            <Typography variant="caption">PESO</Typography>
+            <Typography variant="caption" fontWeight={700} color="text.secondary">PESO</Typography>
             <TextField
-              value={productoActivo?.peso ?? ""}
+              value={safeValue(productoActivo?.peso)}
               type="number"
               size="small"
               fullWidth
+              InputProps={{ readOnly: true, sx: inputReadOnly }}
             />
           </Box>
         </Box>
-            <Box mt={3}>
-            <TableContainer component={Paper} sx={{ width: '100%', boxShadow: 'none', mt: 1 }}>
-                <Table size="small" sx={{ borderCollapse: 'collapse' }}>
-                <TableHead>
-                    <TableRow>
-                    {/* BASE Y TECHO, abarca 3 celdas */}
-                    <TableCell align="center" colSpan={3} sx={{ fontWeight: 'bold', border: '1px solid #222', p: 0.5, background: '#e6ee9c' }}>
-                        BASE Y TECHO
-                    </TableCell>
-                    {/* PAREDES, abarca 3 celdas */}
-                    <TableCell align="center" colSpan={3} sx={{ fontWeight: 'bold', border: '1px solid #222', p: 0.5, background: '#a5d6a7' }}>
-                        PAREDES
-                    </TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    <TableRow>
-                    {/* BASE Y TECHO */}
-                    <TableCell
-                        align="center"
-                        sx={{
-                            background: '#ffeb3b',
-                            fontWeight: 'bold',
-                            border: '1px solid #222',
-                            p: 0.5,
-                            width: 60,
-                        }}
-                        >
-                        <TextField
-                            value={productoActivo?.bolsaAntihumedad?.largobase ?? ''}
-                            size="small"
-                            type="number"
-                            variant="standard"
-                            InputProps={{
-                            readOnly: true,
-                            disableUnderline: true,
-                            sx: { textAlign: 'center', fontWeight: 'bold', bgcolor: '#ffeb3b', p: 0, width: 54 },
-                            }}
-                            sx={{
-                            width: '54px',
-                            textAlign: 'center',
-                            fontWeight: 'bold',
-                            bgcolor: '#ffeb3b',
-                            p: 0,
-                            '& input': { textAlign: 'center', fontWeight: 'bold', bgcolor: '#ffeb3b', p: 0 },
-                            }}
-                        />
-                        </TableCell>
 
-                        <TableCell
-                        align="center"
-                        sx={{
-                            background: '#43a047',
-                            color: 'white',
-                            fontWeight: 'bold',
-                            border: '1px solid #222',
-                            p: 0.5,
-                            width: 60,
-                        }}
-                        >
-                        <TextField
-                          value={productoActivo?.bolsaAntihumedad?.anchobase ?? ''}
-                          onChange={e => {
-                            const value = Number(e.target.value);
-                            setPedidoActivo((prev: any) => ({
-                              ...prev,
-                              productos: prev.productos.map((prod: Producto) => {
-                                if (prod.id !== productoActivo.id) return prod;
-                                return {
-                                  ...prod,
-                                  bolsaAntihumedad: {
-                                    ...prod.bolsaAntihumedad,
-                                    anchobase: value,
-                                    // los demás cálculos igual...
-                                  },
-                                };
-                              }),
-                            }));
-                          }}
-                          onBlur={e => {
-                            let value = Number(e.target.value);
+        {/* Tabla de cálculo */}
+        <Box mt={1.5}>
+          <TableContainer component={Paper} elevation={0} sx={{ width: '100%', boxShadow: 'none', borderRadius: 2, background: "#fff" }}>
+            <Table size="small" sx={{ borderCollapse: 'collapse' }}>
+              <TableHead>
+                <TableRow>
+                  {/* BASE Y TECHO */}
+                  <TableCell align="center" colSpan={3} sx={{ fontWeight: 'bold', border: 0, bgcolor: fondoBase, fontSize: 15 }}>
+                    BASE Y TECHO
+                  </TableCell>
+                  {/* PAREDES */}
+                  <TableCell align="center" colSpan={3} sx={{ fontWeight: 'bold', border: 0, bgcolor: fondoVerde, fontSize: 15 }}>
+                    PAREDES
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                <TableRow>
+                  {/* BASE Y TECHO */}
+                  <TableCell align="center" sx={{ border: 0 }}>
+                    <TextField
+                      value={safeValue(productoActivo?.bolsaAntihumedad?.largobase)}
+                      size="small"
+                      type="number"
+                      variant="standard"
+                      InputProps={{ readOnly: true, disableUnderline: true, sx: inputReadOnly }}
+                      sx={{ width: 58 }}
+                    />
+                  </TableCell>
+                  <TableCell align="center" sx={{ border: 0 }}>
+                    <TextField
+                      value={safeValue(productoActivo?.bolsaAntihumedad?.anchobase)}
+                      onChange={e => {
+                        const value = Number(e.target.value);
+                        setPedidoActivo((prev: any) => ({
+                          ...prev,
+                          productos: prev.productos.map((prod: Producto) => {
+                            if (prod.id !== productoActivo.id) return prod;
+                            return {
+                              ...prod,
+                              bolsaAntihumedad: {
+                                ...prod.bolsaAntihumedad,
+                                anchobase: value,
+                              },
+                            };
+                          }),
+                        }));
+                      }}
+                      onBlur={e => {
+                        let value = Number(e.target.value);
+                        const esMultiploValido = (n: number) => n % 20 === 0 || n % 30 === 0;
+                        if (!esMultiploValido(value)) {
+                          let m20 = Math.round(value / 20) * 20;
+                          let m30 = Math.round(value / 30) * 30;
+                          value = Math.abs(m20 - value) < Math.abs(m30 - value) ? m20 : m30;
+                        }
+                        //if (value < 20) value = 0;
+                        setPedidoActivo((prev: any) => ({
+                          ...prev,
+                          productos: prev.productos.map((prod: Producto) => {
+                            if (prod.id !== productoActivo.id) return prod;
+                            // --- Aquí el 0 sí se respeta
+                            const anchobase = value;
+                            const nuevoIndiceBase = anchobase - (prod.anchoEquipo ?? 0);
+                            const nuevoLargoBase = (prod.largoEquipo ?? 0) + nuevoIndiceBase;
+                            const nuevaCantidadBase = (nuevoLargoBase * (anchobase / 120) * 2) / 100;
+                            const nuevoLargoParedes = (nuevoLargoBase + anchobase) * 2;
+                            return {
+                              ...prod,
+                              bolsaAntihumedad: {
+                                ...prod.bolsaAntihumedad,
+                                anchobase: anchobase,
+                                indicebase: nuevoIndiceBase,
+                                largobase: nuevoLargoBase,
+                                cantidadBase: nuevaCantidadBase,
+                                largoparedes: nuevoLargoParedes,
+                              },
+                            };
+                          }),
+                        }));
+                      }}
+                      size="small"
+                      type="number"
+                      variant="standard"
+                      InputProps={{ disableUnderline: true, sx: inputEditable }}
+                      sx={{ width: 58 }}
+                    />
+                  </TableCell>
+                  <TableCell align="center" sx={{ border: 0 }}>
+                    <TextField
+                      value={safeValue(productoActivo?.bolsaAntihumedad?.indicebase)}
+                      size="small"
+                      type="number"
+                      variant="standard"
+                      InputProps={{ readOnly: true, disableUnderline: true, sx: inputReadOnly }}
+                      sx={{ width: 58 }}
+                    />
+                  </TableCell>
+                  {/* PAREDES */}
+                  <TableCell align="center" sx={{ border: 0 }}>
+                    <TextField
+                      value={safeValue(productoActivo?.bolsaAntihumedad?.largoparedes)}
+                      size="small"
+                      type="number"
+                      variant="standard"
+                      InputProps={{ readOnly: true, disableUnderline: true, sx: inputReadOnly }}
+                      sx={{ width: 58 }}
+                    />
+                  </TableCell>
+                  <TableCell align="center" sx={{ border: 0 }}>
+                    <TextField
+                      value={safeValue(productoActivo?.bolsaAntihumedad?.altoparedes)}
+                      onChange={e => {
+                        const nuevoAltoParedes = Number(e.target.value);
+                        setPedidoActivo((prev: any) => ({
+                          ...prev,
+                          productos: prev.productos.map((prod: Producto) => {
+                            if (prod.id !== productoActivo.id) return prod;
+                            // Aquí respetamos el 0
+                            const anchobase = prod.bolsaAntihumedad?.anchobase ?? 0;
+                            const largobase = prod.bolsaAntihumedad?.largobase ?? 0;
+                            const indicebase = prod.bolsaAntihumedad?.indicebase ?? 0;
+                            const altoEquipo = prod.altoEquipo ?? 0;
+                            const nuevoIndiceParedes = nuevoAltoParedes + indicebase - altoEquipo;
+                            const nuevaCantidadParedes =
+                              ((largobase + anchobase) * 2 * (nuevoAltoParedes / 120)) / 100;
+                            return {
+                              ...prod,
+                              bolsaAntihumedad: {
+                                ...prod.bolsaAntihumedad,
+                                altoparedes: nuevoAltoParedes,
+                                indiceparedes: nuevoIndiceParedes,
+                                cantidadParedes: nuevaCantidadParedes,
+                                cantidad: (nuevaCantidadParedes + (prod.bolsaAntihumedad?.cantidadBase ?? 0)) * 1.07,
+                              },
+                            };
+                          }),
+                        }));
+                        const eventLike = {
+                          target: {
+                            name: 'bolsaAntihumedad.cantidad',
+                            value: productoActivo.bolsaAntihumedad?.cantidad ?? 0
+                          }
+                        } as React.ChangeEvent<HTMLInputElement>;
+                        handleImporteChange(eventLike, setPedidoActivo, materiales, productoActivo);
+                      }}
+                      onBlur={e => {
+                        let value = Number(e.target.value);
+                        function ajustarMultiplo20o30(n: number) {
+                          if (n < 20) return 20;
+                          if (n % 20 === 0 || n % 30 === 0) return n;
+                          const m20 = Math.round(n / 20) * 20;
+                          const m30 = Math.round(n / 30) * 30;
+                          return Math.abs(m20 - n) < Math.abs(m30 - n) ? m20 : m30;
+                        }
+                        value = ajustarMultiplo20o30(value);
+                        setPedidoActivo((prev: any) => ({
+                          ...prev,
+                          productos: prev.productos.map((prod: Producto) => {
+                            if (prod.id !== productoActivo.id) return prod;
+                            const anchobase = prod.bolsaAntihumedad?.anchobase ?? 0;
+                            const largobase = prod.bolsaAntihumedad?.largobase ?? 0;
+                            const indicebase = prod.bolsaAntihumedad?.indicebase ?? 0;
+                            const altoEquipo = prod.altoEquipo ?? 0;
+                            const nuevoIndiceParedes = value + indicebase - altoEquipo;
+                            const nuevaCantidadParedes =
+                              ((largobase + anchobase) * 2 * (value / 120)) / 100;
+                            return {
+                              ...prod,
+                              bolsaAntihumedad: {
+                                ...prod.bolsaAntihumedad,
+                                altoparedes: value,
+                                indiceparedes: nuevoIndiceParedes,
+                                cantidadParedes: nuevaCantidadParedes,
+                                cantidad: (nuevaCantidadParedes + (prod.bolsaAntihumedad?.cantidadBase ?? 0)) * 1.07,
+                              },
+                            };
+                          }),
+                        }));
+                        const eventLike = {
+                          target: {
+                            name: 'bolsaAntihumedad.cantidad',
+                            value: productoActivo.bolsaAntihumedad?.cantidad ?? 0
+                          }
+                        } as React.ChangeEvent<HTMLInputElement>;
+                        handleImporteChange(eventLike, setPedidoActivo, materiales, productoActivo);
+                      }}
+                      size="small"
+                      type="number"
+                      variant="standard"
+                      InputProps={{ disableUnderline: true, sx: inputEditable }}
+                      sx={{ width: 58 }}
+                    />
+                  </TableCell>
+                  <TableCell align="center" sx={{ border: 0 }}>
+                    <TextField
+                      value={safeValue(productoActivo?.bolsaAntihumedad?.indiceparedes)}
+                      size="small"
+                      type="number"
+                      variant="standard"
+                      InputProps={{ readOnly: true, disableUnderline: true, sx: inputReadOnly }}
+                      sx={{ width: 58 }}
+                    />
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
 
-                            // --- Redondea al múltiplo más cercano de 20 o 30 mayor o igual a 20
-                            // Solo acepta múltiplos de 20 o 30 (ejemplo: 20, 30, 40, 60, 120, etc)
-                            // Puedes ajustar si solo quieres exacto 20 o exacto 30, o ambos.
-                            const esMultiploValido = (n:number) => n % 20 === 0 || n % 30 === 0;
-                            if (!esMultiploValido(value)) {
-                              // Ajusta al múltiplo de 20 o 30 más cercano
-                              let m20 = Math.round(value / 20) * 20;
-                              let m30 = Math.round(value / 30) * 30;
-                              // Elige el más cercano
-                              value = Math.abs(m20 - value) < Math.abs(m30 - value) ? m20 : m30;
-                            }
-                            if (value < 20) value = 20;
-                                   
-                            setPedidoActivo((prev: any) => ({
-                              ...prev,
-                              productos: prev.productos.map((prod: Producto) => {
-                                if (prod.id !== productoActivo.id) return prod;
-                                 const nuevoIndiceBase = value - prod.anchoEquipo;
-                                    const nuevoLargoBase = Number(prod.largoEquipo) + nuevoIndiceBase;
-                                    const nuevaCantidadBase =(nuevoLargoBase * (value / 120) * 2) / 100;
-                                    // OJO: usa los NUEVOS valores
-                                    const nuevoLargoParedes = (nuevoLargoBase + value) * 2;
-                                return {
-                                  ...prod,
-                                  bolsaAntihumedad: {
-                                    ...prod.bolsaAntihumedad,
-                                    anchobase: value,
-                                     indicebase: nuevoIndiceBase,
-                                        largobase: nuevoLargoBase,
-                                        cantidadBase: nuevaCantidadBase,
-                                        largoparedes: nuevoLargoParedes,
-                                  },
-                                };
-                              }),
-                            }));
-                          }}
-                          size="small"
-                          type="number"
-                          variant="standard"
-                            InputProps={{
-                            disableUnderline: true,
-                            sx: {
-                                textAlign: 'center',
-                                fontWeight: 'bold',
-                                bgcolor: '#43a047',
-                                color: 'white',
-                                p: 0,
-                                width: 54,
-                            },
-                            }}
-                            sx={{
-                            width: '54px',
-                            textAlign: 'center',
-                            fontWeight: 'bold',
-                            bgcolor: '#43a047',
-                            color: 'white',
-                            p: 0,
-                            '& input': { textAlign: 'center', fontWeight: 'bold', bgcolor: '#43a047', color: 'white', p: 0 },
-                            }}
-                        />
-                        </TableCell>
-
-                    <TableCell align="center" sx={{ background: '#cddc39', fontWeight: 'bold', border: '1px solid #222', p: 0.5, width: 60 }}>
-                        <TextField
-                            value={productoActivo?.bolsaAntihumedad?.indicebase ?? ''}
-                            size="small"
-                            type="number"
-                            variant="standard"
-                            InputProps={{
-                            readOnly: true,
-                            disableUnderline: true,
-                            sx: { textAlign: 'center', fontWeight: 'bold', bgcolor: '#ffeb3b', p: 0, width: 54 },
-                            }}
-                            sx={{
-                            width: '54px',
-                            textAlign: 'center',
-                            fontWeight: 'bold',
-                            bgcolor: '#ffeb3b',
-                            p: 0,
-                            '& input': { textAlign: 'center', fontWeight: 'bold', bgcolor: '#ffeb3b', p: 0 },
-                            }}
-                        />
-                    </TableCell>
-                    {/* PAREDES */}
-                    <TableCell align="center" sx={{ background: '#ffeb3b', fontWeight: 'bold', border: '1px solid #222', p: 0.5, width: 60 }}>
-                        <TextField
-                            value={productoActivo!.bolsaAntihumedad?.largoparedes ?? ''}
-                            size="small"
-                            type="number"
-                            variant="standard"
-                            InputProps={{
-                            readOnly: true,
-                            disableUnderline: true,
-                            sx: { textAlign: 'center', fontWeight: 'bold', bgcolor: '#ffeb3b', p: 0, width: 54 },
-                            }}
-                            sx={{
-                            width: '54px',
-                            textAlign: 'center',
-                            fontWeight: 'bold',
-                            bgcolor: '#ffeb3b',
-                            p: 0,
-                            '& input': { textAlign: 'center', fontWeight: 'bold', bgcolor: '#ffeb3b', p: 0 },
-                            }}
-                        />
-                    </TableCell>
-                    <TableCell align="center" sx={{ background: '#43a047', color: 'white', fontWeight: 'bold', border: '1px solid #222', p: 0.5, width: 60 }}>
-                        <TextField
-                          value={productoActivo?.bolsaAntihumedad?.altoparedes ?? ''}
-                          onChange={e => {
-                            const nuevoAltoParedes = Number(e.target.value);
-
-                            setPedidoActivo((prev: any) => ({
-                              ...prev,
-                              productos: prev.productos.map((prod: Producto) => {
-                                if (prod.id !== productoActivo.id) return prod;
-
-                                const anchobase = prod.bolsaAntihumedad?.anchobase ?? 0;
-                                const largobase = prod.bolsaAntihumedad?.largobase ?? 0;
-                                const indicebase = prod.bolsaAntihumedad?.indicebase ?? 0;
-                                const altoEquipo = prod.altoEquipo ?? 0;
-
-                                const nuevoIndiceParedes = nuevoAltoParedes + indicebase - altoEquipo;
-                                const nuevaCantidadParedes =
-                                  ((largobase + anchobase) * 2 * (nuevoAltoParedes / 120)) / 100;
-
-                                return {
-                                  ...prod,
-                                  bolsaAntihumedad: {
-                                    ...prod.bolsaAntihumedad,
-                                    altoparedes: nuevoAltoParedes,
-                                    indiceparedes: nuevoIndiceParedes,
-                                    cantidadParedes: nuevaCantidadParedes,
-                                    cantidad: (nuevaCantidadParedes + (prod.bolsaAntihumedad?.cantidadBase || 0)) * 1.07,
-                                  },
-                                };
-                              }),
-                            }));
-
-                            // handleImporteChange igual que antes
-                            const eventLike = {
-                              target: {
-                                name: 'cantidadBolsa',
-                                value: productoActivo.bolsaAntihumedad!.cantidad
-                              }
-                            } as React.ChangeEvent<HTMLInputElement>;
-                            handleImporteChange(eventLike, setPedidoActivo, materiales, productoActivo);
-                          }}
-                          onBlur={e => {
-                            // Solo acepta múltiplos de 20 o 30
-                            let value = Number(e.target.value);
-
-                            function ajustarMultiplo20o30(n:number) {
-                              if (n < 20) return 20;
-                              if (n % 20 === 0 || n % 30 === 0) return n;
-                              const m20 = Math.round(n / 20) * 20;
-                              const m30 = Math.round(n / 30) * 30;
-                              return Math.abs(m20 - n) < Math.abs(m30 - n) ? m20 : m30;
-                            }
-
-                            value = ajustarMultiplo20o30(value);
-
-                            setPedidoActivo((prev: any) => ({
-                              ...prev,
-                              productos: prev.productos.map((prod: Producto) => {
-                                if (prod.id !== productoActivo.id) return prod;
-
-                                const anchobase = prod.bolsaAntihumedad?.anchobase ?? 0;
-                                const largobase = prod.bolsaAntihumedad?.largobase ?? 0;
-                                const indicebase = prod.bolsaAntihumedad?.indicebase ?? 0;
-                                const altoEquipo = prod.altoEquipo ?? 0;
-
-                                const nuevoIndiceParedes = value + indicebase - altoEquipo;
-                                const nuevaCantidadParedes =
-                                  ((largobase + anchobase) * 2 * (value / 120)) / 100;
-
-                                return {
-                                  ...prod,
-                                  bolsaAntihumedad: {
-                                    ...prod.bolsaAntihumedad,
-                                    altoparedes: value,
-                                    indiceparedes: nuevoIndiceParedes,
-                                    cantidadParedes: nuevaCantidadParedes,
-                                    cantidad: (nuevaCantidadParedes + (prod.bolsaAntihumedad?.cantidadBase || 0)) * 1.07,
-                                  },
-                                };
-                              }),
-                            }));
-
-                            // handleImporteChange igual que antes (opcional: lo puedes poner aquí también si quieres recalcular con el nuevo valor ajustado)
-                            const eventLike = {
-                              target: {
-                                name: 'cantidadBolsa',
-                                value: productoActivo.bolsaAntihumedad!.cantidad
-                              }
-                            } as React.ChangeEvent<HTMLInputElement>;
-                            handleImporteChange(eventLike, setPedidoActivo, materiales, productoActivo);
-                          }}
-                          size="small"
-                          type="number"
-                          variant="standard"
-                          InputProps={{
-                            disableUnderline: true,
-                            sx: {
-                              textAlign: 'center',
-                              fontWeight: 'bold',
-                              bgcolor: '#43a047',
-                              color: 'white',
-                              p: 0,
-                              width: 54,
-                            },
-                          }}
-                          sx={{
-                            width: '54px',
-                            textAlign: 'center',
-                            fontWeight: 'bold',
-                            bgcolor: '#43a047',
-                            color: 'white',
-                            p: 0,
-                            '& input': { textAlign: 'center', fontWeight: 'bold', bgcolor: '#43a047', color: 'white', p: 0 },
-                          }}
-                        />
-
-                    </TableCell>
-                    <TableCell align="center" sx={{ background: '#cddc39', fontWeight: 'bold', border: '1px solid #222', p: 0.5, width: 60 }}>
-                        <TextField
-                            value={productoActivo?.bolsaAntihumedad?.indiceparedes ?? ''}
-                            size="small"
-                            type="number"
-                            variant="standard"
-                            InputProps={{
-                            readOnly: true,
-                            disableUnderline: true,
-                            sx: { textAlign: 'center', fontWeight: 'bold', bgcolor: '#ffeb3b', p: 0, width: 54 },
-                            }}
-                            sx={{
-                            width: '54px',
-                            textAlign: 'center',
-                            fontWeight: 'bold',
-                            bgcolor: '#ffeb3b',
-                            p: 0,
-                            '& input': { textAlign: 'center', fontWeight: 'bold', bgcolor: '#ffeb3b', p: 0 },
-                            }}
-                        />
-                    </TableCell>
-                    </TableRow>
-                </TableBody>
-                </Table>
-            </TableContainer>
-            </Box>
-            <Box mt={1} display="flex" alignItems="center">
-                <Box sx={{ width: 180 /* 3 columnas de 60px */ }} />
-                    <Box>
-                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#333' }}>
-                        Cantidad base:
-                        </Typography>
-                        <TextField
-                        value={productoActivo?.bolsaAntihumedad?.cantidadBase ?? ''}
-                        size="small"
-                        type="number"
-                        variant="standard"
-                        />
-                </Box>
-                <Box sx={{ width: 180 /* 3 columnas de 60px */ }} />
-                    <Box>
-                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#333' }}>
-                        Cantidad Paredes:
-                        </Typography>
-                        <TextField
-                        value={productoActivo?.bolsaAntihumedad?.cantidadParedes?? ''}
-                        size="small"
-                        type="number"
-                        variant="standard"
-                        />
-                </Box>
-                <Box sx={{ width: 180 /* 3 columnas de 60px */ }} />
-                    <Box>
-                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#333' }}>
-                        Cantidad Bolsa:
-                        </Typography>
-                        <TextField
-                        value={productoActivo?.bolsaAntihumedad?.cantidad?? ''}
-                        size="small"
-                        type="number"
-                        variant="standard"
-                        />
-                </Box>
-            </Box>
-
+        {/* Totales finales */}
+        <Box mt={2} display="flex" gap={2} alignItems="center" justifyContent="center" flexWrap="wrap">
+          <Paper elevation={0} sx={{
+            bgcolor: fondoBase, px: 2, py: 1, borderRadius: 2, minWidth: 170, textAlign: "center"
+          }}>
+            <Typography variant="body2" fontWeight={700}>Cantidad base</Typography>
+            <TextField
+              value={safeValue(productoActivo?.bolsaAntihumedad?.cantidadBase)}
+              size="small"
+              type="number"
+              variant="standard"
+              InputProps={{ readOnly: true, disableUnderline: true, sx: inputReadOnly }}
+            />
+          </Paper>
+          <Paper elevation={0} sx={{
+            bgcolor: fondoVerde, px: 2, py: 1, borderRadius: 2, minWidth: 170, textAlign: "center"
+          }}>
+            <Typography variant="body2" fontWeight={700}>Cantidad Paredes</Typography>
+            <TextField
+              value={safeValue(productoActivo?.bolsaAntihumedad?.cantidadParedes)}
+              size="small"
+              type="number"
+              variant="standard"
+              InputProps={{ readOnly: true, disableUnderline: true, sx: inputReadOnly }}
+            />
+          </Paper>
+          <Paper elevation={0} sx={{
+            bgcolor: "#bbdefb", px: 2, py: 1, borderRadius: 2, minWidth: 170, textAlign: "center"
+          }}>
+            <Typography variant="body2" fontWeight={900} color="primary">
+              Cantidad Bolsa
+            </Typography>
+            <TextField
+              value={safeValue(productoActivo?.bolsaAntihumedad?.cantidad)}
+              size="small"
+              type="number"
+              variant="standard"
+              InputProps={{ readOnly: true, disableUnderline: true, sx: inputReadOnly }}
+            />
+          </Paper>
+        </Box>
       </DialogContent>
     </Dialog>
   );

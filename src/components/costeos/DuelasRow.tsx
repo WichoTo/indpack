@@ -4,21 +4,21 @@ import {
   Select,
   MenuItem,
   TextField,
-  Typography
+  Typography,
+  Paper,
+  Divider,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
-import {
-  Costeo,
-  Producto,
-  Material,
-} from '../../config/types';
-import {   handleCalcularTotales, handleDuelasChange } from '../../hooks/useFetchCosteo';
+import { Costeo, Producto, Material } from '../../config/types';
+import { handleCalcularTotales, handleDuelasChange } from '../../hooks/useFetchCosteo';
 
 interface Props {
   producto: Producto;
   costeo: Costeo;
   setCosteo: React.Dispatch<React.SetStateAction<Costeo>>;
-  materiales:Material[]
-  tiposMateriales:Record<string, string[]>
+  materiales: Material[];
+  tiposMateriales: Record<string, string[]>;
 }
 
 const DuelasRow: React.FC<Props> = ({
@@ -28,302 +28,277 @@ const DuelasRow: React.FC<Props> = ({
   tiposMateriales
 }) => {
 
-
-
   return (
-    <>
-    <Box display="grid" gridTemplateColumns={{ xs: '1fr',  sm: '1fr 1fr 1fr 1fr'}} gap={2} mb={1} alignItems="center">
-          <Box sx={{ gridColumn: 'span 4' }}>
-            <Typography variant="h6" sx={{ fontWeight: "bold", mt: 1, color: "var(--primary-color)" }}>
-                DUELAS
-            </Typography>
-          </Box>  
-          <Box sx={{ gridColumn: 'span 2' }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: "bold", mb: 1, color: "var(--primary-color)" }}>
-              Tipo Duelas
-            </Typography>
-              <Select
-              size="small"
-              margin="dense"
-                fullWidth
-                name="tipoMarco"
-                value={producto.duelas.tipoDuela || "D7"}
-                onChange={(e) => {
-                  const nuevoTipoDuela = e.target.value;
-                  setCosteo((prevPedido) => {
-                    if (!prevPedido) return prevPedido;
-                    return {
-                      ...prevPedido,
-                      productos: prevPedido.productos.map((prod) =>
-                        prod.id === producto?.id
-                          ? {
-                              ...prod,
-                              duelas: {
-                                ...(prod.duelas || { postes: [], largueros: [] }), // Asegurar estructura inicial
-                                tipoDuela: nuevoTipoDuela,
-                              },
-                            }
-                          : prod
-                      ),
-                    };
-                  });
-                  if (producto?.id) {
-                    handleCalcularTotales(producto.id, setCosteo, materiales);
-                  }
-                }}
-                displayEmpty
-              >
-                <MenuItem value=""></MenuItem>
-                {tiposMateriales.Duelas.map((valor) => (
-                  <MenuItem key={valor} value={valor}>
-                    {valor}
-                  </MenuItem>
-                ))}
-            </Select>
-          </Box>
-          <Box>
-          </Box>
-          
-          <Box>
-          </Box>
-          
-          <Box sx={{ gridColumn: 'span 4' }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: "bold",  color: "var(--primary-color)" }}>
-              D.2y4
-            </Typography>
-          </Box>
-          <Box>
-            <TextField
-              type="number"
-              size="small"
-              margin="dense"
-              fullWidth
-              label="Cant Postes"
-              value={producto.duelas.postes[0].cantidad}
-              onChange={e => {
-                handleDuelasChange(
-                  producto.id!,
-                  "postes",
-                  "cantidad",
-                  0,
-                  Number(e.target.value),
-                  setCosteo
-                );
-              }}
-            />
+    <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, mb: 2, background: "#fafbfc" }}>
+      <Typography variant="h6" fontWeight={900} color="var(--primary-color)" mb={1}>
+        Duelas
+      </Typography>
 
-          </Box>
-          <Box>
-            <TextField
-              type="number"
-              size="small"
-              margin="dense"
-              fullWidth
-              label="Medidas Postes"
-              value={producto.duelas.postes[0].medida}
-              onChange={e => {
-                handleDuelasChange(
-                  producto.id!,
-                  "postes",
-                  "medida",
-                  0,
-                  Number(e.target.value),
-                  setCosteo
-                );
-              }}
-            />
-          </Box>          
-          <Box>
-            <TextField
-              size="small"
-              margin="dense"
-                fullWidth
-                label="Cant Largueros"
-                value={producto?.duelas?.largueros?.[0]?.cantidad ?? 0}
-                onChange={(e) => {
-                  handleDuelasChange(producto?.id ?? "", "largueros", "cantidad", 0, Number(e.target.value), setCosteo);
-                  if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
-                }}
-              />
-          </Box>
-          <Box>
-            <TextField
-              size="small"
-              margin="dense"
-                fullWidth
-                label="Medidas Largueros"
-                value={producto?.duelas?.largueros?.[0]?.medida ?? 0}
-                onChange={(e) => {
-                  handleDuelasChange(producto?.id ?? "", "largueros", "medida", 0, Number(e.target.value), setCosteo);
-                  if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
-                }}
-              />
-          </Box>
-          <Box sx={{ gridColumn: 'span 4' }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: "bold", color: "var(--primary-color)" }}>
-              D.1y3
-            </Typography>
-          </Box>          
-          <Box>
-            <TextField
-              size="small"
-              margin="dense"
-                fullWidth
-                label="Cant Largueros"
-                value={producto?.duelas?.largueros?.[1]?.cantidad ?? 0}
-                onChange={(e) => {
-                  handleDuelasChange(producto?.id ?? "", "largueros", "cantidad", 1, Number(e.target.value), setCosteo);
-                  if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
-                }}
-              />
-          </Box>
-          <Box>
-            <TextField
-              size="small"
-              margin="dense"
-                fullWidth
-                label="Medidas Largueros"
-                value={producto?.duelas?.largueros?.[1]?.medida ?? 0}
-                onChange={(e) => {
-                  handleDuelasChange(producto?.id ?? "", "largueros", "medida", 1, Number(e.target.value), setCosteo);
-                  if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
-                }}
-              />
-          </Box>
-          <Box>
-            <TextField
-              size="small"
-              margin="dense"
-                fullWidth
-                label="Cant Postes"
-                value={producto?.duelas?.postes?.[1]?.cantidad ?? 0}
-                onChange={(e) => {
-                const nuevaCantidad = Number(e.target.value);
+      <Divider sx={{ mb: 2 }} />
 
-                setCosteo((prevPedido) => {
-                  if (!prevPedido) return prevPedido;
-                  return {
-                    ...prevPedido,
-                    productos: prevPedido.productos.map((prod) => {
-                      if (prod.id !== producto.id) return prod;
+      {/* Tipo de duela */}
+      <Box mb={2}>
+        <Typography variant="subtitle1" fontWeight={700} color="var(--primary-color)">
+          Tipo de Duela
+        </Typography>
+        <FormControl fullWidth size="small" sx={{ mt: 1 }}>
+          <InputLabel>Tipo Duela</InputLabel>
+          <Select
+            name="tipoDuela"
+            value={producto.duelas?.tipoDuela || ""}
+            label="Tipo Duela"
+            onChange={e => {
+              const nuevoTipoDuela = e.target.value;
+              setCosteo(prevPedido => {
+                if (!prevPedido) return prevPedido;
+                return {
+                  ...prevPedido,
+                  productos: prevPedido.productos.map(prod =>
+                    prod.id === producto?.id
+                      ? {
+                          ...prod,
+                          duelas: {
+                            ...(prod.duelas || { postes: [], largueros: [] }),
+                            tipoDuela: nuevoTipoDuela
+                          }
+                        }
+                      : prod
+                  )
+                };
+              });
+              if (producto?.id) {
+                handleCalcularTotales(producto.id, setCosteo, materiales);
+              }
+            }}
+            displayEmpty
+          >
+            <MenuItem value="">Selecciona tipo de duela</MenuItem>
+            {tiposMateriales.Duelas.map(valor => (
+              <MenuItem key={valor} value={valor}>{valor}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
 
-                      // Asegura que duelas.postes[1] exista
-                      const nuevosPostes = [...(prod.duelas?.postes || [])];
-                      while (nuevosPostes.length < 2) nuevosPostes.push({ cantidad: 0, medida: 0 });
-                      nuevosPostes[1] = {
-                        ...nuevosPostes[1],
-                        cantidad: nuevaCantidad,
-                      };
+      <Divider sx={{ my: 2 }} />
 
-                      // Asegura que duelate siempre tenga número
-                      const duelateMedida = (
-                        prod.duelas?.duelate?.postes?.medida !== undefined
-                          ? prod.duelas.duelate.postes.medida
-                          : 0
-                      );
+      {/* Sección D.2y4 */}
+      <Typography variant="subtitle2" fontWeight={800} color="var(--primary-color)" mb={1}>
+        D. 2 y 4
+      </Typography>
+      <Box
+        display="grid"
+        gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr 1fr 1fr' }}
+        gap={2}
+        mb={2}
+      >
+        <TextField
+          type="number"
+          size="small"
+          margin="dense"
+          label="Cant. Postes"
+          fullWidth
+          value={producto.duelas?.postes?.[0]?.cantidad ?? 0}
+          onChange={e =>
+            handleDuelasChange(
+              producto.id!,
+              "postes",
+              "cantidad",
+              0,
+              Number(e.target.value),
+              setCosteo,
+              materiales
+            )
+          }
+        />
+        <TextField
+          type="number"
+          size="small"
+          margin="dense"
+          label="Medidas Postes"
+          fullWidth
+          value={producto.duelas?.postes?.[0]?.medida ?? 0}
+          onChange={e =>
+            handleDuelasChange(
+              producto.id!,
+              "postes",
+              "medida",
+              0,
+              Number(e.target.value),
+              setCosteo,
+              materiales
+            )
+          }
+        />
+        <TextField
+          type="number"
+          size="small"
+          margin="dense"
+          label="Cant. Largueros"
+          fullWidth
+          value={producto.duelas?.largueros?.[0]?.cantidad ?? 0}
+          onChange={e => {
+            handleDuelasChange(
+              producto.id!,
+              "largueros",
+              "cantidad",
+              0,
+              Number(e.target.value),
+              setCosteo,
+              materiales
+            );
+            if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+        <TextField
+          type="number"
+          size="small"
+          margin="dense"
+          label="Medidas Largueros"
+          fullWidth
+          value={producto.duelas?.largueros?.[0]?.medida ?? 0}
+          onChange={e => {
+            handleDuelasChange(
+              producto.id!,
+              "largueros",
+              "medida",
+              0,
+              Number(e.target.value),
+              setCosteo,
+              materiales
+            );
+            if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+      </Box>
 
-                      const nuevasDuelas = {
-                        ...prod.duelas,
-                        postes: nuevosPostes,
-                        duelate: {
-                          postes: {
-                            cantidad: Math.max(1, Math.round(nuevaCantidad / 2)),
-                            medida: duelateMedida,
-                          },
-                          largueros: {
-                            cantidad: prod.duelas?.duelate?.largueros?.cantidad ?? 0,
-                            medida: prod.duelas?.duelate?.largueros?.medida ?? 0,
-                          },
-                        },
-                      };
+      {/* Sección D.1y3 */}
+      <Typography variant="subtitle2" fontWeight={800} color="var(--primary-color)" mb={1}>
+        D. 1 y 3
+      </Typography>
+      <Box
+        display="grid"
+        gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr 1fr 1fr' }}
+        gap={2}
+        mb={2}
+      >
+        <TextField
+          type="number"
+          size="small"
+          margin="dense"
+          label="Cant. Largueros"
+          fullWidth
+          value={producto.duelas?.largueros?.[1]?.cantidad ?? 0}
+          onChange={e => {
+            handleDuelasChange(producto.id!, "largueros", "cantidad", 1, Number(e.target.value), setCosteo,
+              materiales);
+            if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+        <TextField
+          type="number"
+          size="small"
+          margin="dense"
+          label="Medidas Largueros"
+          fullWidth
+          value={producto.duelas?.largueros?.[1]?.medida ?? 0}
+          onChange={e => {
+            handleDuelasChange(producto.id!, "largueros", "medida", 1, Number(e.target.value), setCosteo,
+              materiales);
+            if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+        <TextField
+          type="number"
+          size="small"
+          margin="dense"
+          label="Cant. Postes"
+          fullWidth
+          value={producto.duelas?.postes?.[1]?.cantidad ?? 0}
+          onChange={e => {
+            handleDuelasChange(producto.id!, "postes", "cantidad", 1, Number(e.target.value), setCosteo,
+              materiales);
+            if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+        <TextField
+          type="number"
+          size="small"
+          margin="dense"
+          label="Medidas Postes"
+          fullWidth
+          value={producto.duelas?.postes?.[1]?.medida ?? 0}
+          onChange={e => {
+            handleDuelasChange(producto.id!, "postes", "medida", 1, Number(e.target.value), setCosteo,
+              materiales);
+            if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+      </Box>
 
-                      return {
-                        ...prod,
-                        duelas: nuevasDuelas,
-                      };
-                    }),
-                  };
-                });
-
-                if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
-              }}
-
-              />
-          </Box>
-          <Box>
-            <TextField
-              size="small"
-              margin="dense"
-                fullWidth
-                label="Medidas Postes"
-                value={producto?.duelas?.postes?.[1]?.medida ?? 0}
-                onChange={(e) => {
-                  handleDuelasChange(producto?.id ?? "", "postes", "medida", 1, Number(e.target.value), setCosteo);
-                  if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
-                }}
-              />
-          </Box>
-
-          <Box sx={{ gridColumn: 'span 4' }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: "bold",  color: "var(--primary-color)" }}>
-              Duela Techo
-            </Typography>
-          </Box>
-          <Box>
-            <TextField
-              size="small"
-              margin="dense"
-                fullWidth
-                label="Cant Largueros"
-                value={producto?.duelas?.duelate?.largueros?.cantidad ?? 0}
-                onChange={(e) => {
-                  handleDuelasChange(producto?.id ?? "", "duelateLargueros", "cantidad", null, Number(e.target.value), setCosteo);
-                  if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
-                }}
-              />
-          </Box>
-          <Box>
-            <TextField
-              size="small"
-              margin="dense"
-                fullWidth
-                label="Medidas Largueros"
-                value={producto?.duelas?.duelate?.largueros?.medida ?? 0}
-                onChange={(e) => {
-                  handleDuelasChange(producto?.id ?? "", "duelateLargueros", "medida", null, Number(e.target.value), setCosteo);
-                  if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
-                }}
-              />
-          </Box>          
-          <Box>
-            <TextField
-              size="small"
-              margin="dense"
-                fullWidth
-                label="Cant Bastidor"
-                value={producto?.duelas?.duelate?.postes?.cantidad ?? 0}
-                onChange={(e) => {
-                  handleDuelasChange(producto?.id ?? "", "duelatePostes", "cantidad", null, Number(e.target.value), setCosteo);
-                  if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
-                }}
-              />
-          </Box>
-          <Box>
-            <TextField
-              size="small"
-              margin="dense"
-                fullWidth
-                label="Medidas Bastidor"
-                value={producto?.duelas?.duelate?.postes?.medida ?? 0}
-                onChange={(e) => {
-                  handleDuelasChange(producto?.id ?? "", "duelatePostes", "medida", null, Number(e.target.value), setCosteo);
-                  if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
-                }}
-              />
-          </Box>
-          
-        </Box>
-    </>
+      {/* Sección Duela Techo */}
+      <Typography variant="subtitle2" fontWeight={800} color="var(--primary-color)" mb={1}>
+        Duela Techo
+      </Typography>
+      <Box
+        display="grid"
+        gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr 1fr 1fr' }}
+        gap={2}
+      >
+        <TextField
+          type="number"
+          size="small"
+          margin="dense"
+          label="Cant. Largueros"
+          fullWidth
+          value={producto.duelas?.duelate?.largueros?.cantidad ?? 0}
+          onChange={e => {
+            handleDuelasChange(producto.id!, "duelateLargueros", "cantidad", null, Number(e.target.value), setCosteo,
+              materiales);
+            if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+        <TextField
+          type="number"
+          size="small"
+          margin="dense"
+          label="Medidas Largueros"
+          fullWidth
+          value={producto.duelas?.duelate?.largueros?.medida ?? 0}
+          onChange={e => {
+            handleDuelasChange(producto.id!, "duelateLargueros", "medida", null, Number(e.target.value), setCosteo,
+              materiales);
+            if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+        <TextField
+          type="number"
+          size="small"
+          margin="dense"
+          label="Cant. Bastidor"
+          fullWidth
+          value={producto.duelas?.duelate?.postes?.cantidad ?? 0}
+          onChange={e => {
+            handleDuelasChange(producto.id!, "duelatePostes", "cantidad", null, Number(e.target.value), setCosteo,
+              materiales);
+            if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+        <TextField
+          type="number"
+          size="small"
+          margin="dense"
+          label="Medidas Bastidor"
+          fullWidth
+          value={producto.duelas?.duelate?.postes?.medida ?? 0}
+          onChange={e => {
+            handleDuelasChange(producto.id!, "duelatePostes", "medida", null, Number(e.target.value), setCosteo,
+              materiales);
+            if (producto?.id) handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+      </Box>
+    </Paper>
   );
 };
 

@@ -1,6 +1,7 @@
 // src/pages/UsuariosPage.tsx
 import React, { useState } from 'react';
 import {
+  Box,
   Button,
   TableContainer,
   Paper,
@@ -11,7 +12,6 @@ import {
   TableBody,
   IconButton,
   Typography,
-  Box,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -23,94 +23,113 @@ import NewUserModal from '../../components/configuracion/UsuarioModal';
 import { User } from '../../config/types';
 import { actualizarUsuario, eliminarUsuario, useFetchUsuarios } from '../../hooks/useFetchFunctions';
 import Spinner from '../../components/general/Spinner';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 
- const initialUsuario : User = {
-    id: '',
-    nombre: '',
-    email: '',
-    telefono: undefined,
-    role: 'Usuario',
-    sucursales: [],
-  };
+// Estado inicial para un usuario nuevo
+const initialUsuario: User = {
+  id: '',
+  nombre: '',
+  email: '',
+  telefono: undefined,
+  role: 'Usuario',
+  sucursales: [],
+};
 
 const UsuariosPage: React.FC = () => {
   const { usuarios, fetchUsuarios } = useFetchUsuarios();
-  
-  const [usuario, setUsuario] = useState<User>(initialUsuario);
 
+  const [usuario, setUsuario] = useState<User>(initialUsuario);
   const [showModal, setShowModal] = useState(false);
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
- const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
 
-  
+  // Abrir modal de usuario (nuevo o editar)
   const openModal = (u: User) => {
     setUsuario(u);
     setShowModal(true);
   };
+
+  // Cerrar modal
   const closeModal = () => {
     setShowModal(false);
     setUsuario(initialUsuario);
   };
 
+  // Guardar usuario (crear o editar)
   const handleSaveUser = async (u: User) => {
-    setLoading(true)
+    setLoading(true);
     try {
       await actualizarUsuario(u);
-    } finally {
-      closeModal();
       fetchUsuarios();
-      setLoading(false)
+      closeModal();
+    } finally {
+      setLoading(false);
     }
-    
   };
 
+  // Iniciar proceso de borrado
   const handleDeleteClick = (u: User) => {
     setUserToDelete(u);
     setConfirmOpen(true);
   };
+
+  // Confirmar borrado
   const handleConfirmDelete = async () => {
-    setLoading(true)
-    if (userToDelete) {
-      await eliminarUsuario(userToDelete.id);
-      fetchUsuarios();
-      setLoading(false)
+    setLoading(true);
+    try {
+      if (userToDelete) {
+        await eliminarUsuario(userToDelete.id);
+        fetchUsuarios();
+      }
+    } finally {
+      setLoading(false);
+      setConfirmOpen(false);
+      setUserToDelete(null);
     }
-    setConfirmOpen(false);
-    setUserToDelete(null);
   };
+
+  // Cancelar borrado
   const handleCancelDelete = () => {
     setConfirmOpen(false);
     setUserToDelete(null);
   };
-  if (loading) return  <Spinner open={true}/>
+
   return (
-    <Box sx={{ p: 2 }}>
+    <Box sx={{ p: { xs: 1, md: 3 }, maxWidth: 900, mx: 'auto' }}>
+      {/* Spinner global */}
+      <Spinner open={loading} />
+
+      <Typography variant="h5" sx={{ mb: 2, fontWeight: 700 }}>
+        Gestión de Usuarios
+      </Typography>
       <Button
         variant="contained"
         color="primary"
         onClick={() => openModal(initialUsuario)}
-        sx={{ mb: 2 }}
+        sx={{ mb: 3, fontWeight: 600 }}
+        startIcon={<PersonAddIcon />}
       >
         Agregar Usuario
       </Button>
 
-      <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+
+      <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2 }}>
         <Table stickyHeader>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: 'primary.contrastText' }}>
+              <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: 'primary.contrastText', fontWeight: 700 }}>
                 Nombre
               </TableCell>
-              <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: 'primary.contrastText' }}>
+              <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: 'primary.contrastText', fontWeight: 700 }}>
                 Correo
               </TableCell>
-              <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: 'primary.contrastText' }}>
+              <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: 'primary.contrastText', fontWeight: 700 }}>
                 Teléfono
               </TableCell>
-              <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: 'primary.contrastText' }}>
+              <TableCell sx={{ backgroundColor: 'var(--primary-color)', color: 'primary.contrastText', fontWeight: 700, textAlign: 'center' }}>
                 Acciones
               </TableCell>
             </TableRow>
@@ -118,21 +137,23 @@ const UsuariosPage: React.FC = () => {
           <TableBody>
             {usuarios.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} sx={{ textAlign: 'center', py: 4 }}>
-                  <Typography>No hay usuarios registrados.</Typography>
+                <TableCell colSpan={4} sx={{ textAlign: 'center', py: 5 }}>
+                  <Typography variant="body1" color="text.secondary">
+                    No hay usuarios registrados.
+                  </Typography>
                 </TableCell>
               </TableRow>
             ) : (
               usuarios.map((u, i) => (
-                <TableRow key={i} hover>
-                  <TableCell sx={{ color: 'var(--primary-color)' }}>{u.nombre}</TableCell>
-                  <TableCell sx={{ color: 'var(--primary-color)' }}>{u.email}</TableCell>
-                  <TableCell sx={{ color: 'var(--primary-color)' }}>{u.telefono}</TableCell>
-                  <TableCell>
-                    <IconButton size="small" onClick={() => openModal(u)}>
+                <TableRow key={u.id || i} hover>
+                  <TableCell>{u.nombre}</TableCell>
+                  <TableCell>{u.email}</TableCell>
+                  <TableCell>{u.telefono ?? '-'}</TableCell>
+                  <TableCell align="center">
+                    <IconButton size="small" color="primary" onClick={() => openModal(u)}>
                       <EditIcon fontSize="small" />
                     </IconButton>
-                    <IconButton size="small" onClick={() => handleDeleteClick(u)}>
+                    <IconButton size="small" color="error" onClick={() => handleDeleteClick(u)}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
@@ -142,26 +163,28 @@ const UsuariosPage: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
-      <Spinner open={loading} />
 
-      {/* Modal controlado desde el padre */}
+      {/* Modal para crear/editar usuario */}
       <NewUserModal
         open={showModal}
         onClose={closeModal}
         onSave={handleSaveUser}
-        usuario={usuario}       // <─ paso usuario o null
-        setUsuario={setUsuario} // <─ paso el setter
+        usuario={usuario}
+        setUsuario={setUsuario}
       />
 
-      {/* Diálogo de confirmación */}
+      {/* Diálogo de confirmación de borrado */}
       <Dialog open={confirmOpen} onClose={handleCancelDelete}>
-        <DialogTitle>Confirmar eliminación</DialogTitle>
+        <DialogTitle>¿Eliminar usuario?</DialogTitle>
         <DialogContent>
-          ¿Deseas eliminar al usuario <strong>{userToDelete?.nombre}</strong>?
+          <Typography>
+            ¿Deseas eliminar al usuario{' '}
+            <b>{userToDelete?.nombre}</b>?
+          </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancelDelete}>Cancelar</Button>
-          <Button color="error" onClick={handleConfirmDelete}>
+          <Button color="error" variant="contained" onClick={handleConfirmDelete}>
             Eliminar
           </Button>
         </DialogActions>

@@ -1,36 +1,24 @@
-
-// MaterialModal.tsx
 import React, { useState, useEffect } from 'react'
 import {
   Box,
   TextField,
   Button,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   FormControl,
   InputLabel,
   MenuItem,
   Select,
-  Modal,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   IconButton,
+  Stack,
+  Divider,
 } from '@mui/material'
-import { styled } from '@mui/system'
 import CloseIcon from '@mui/icons-material/Close'
+import SaveIcon from '@mui/icons-material/Save'
+import CancelIcon from '@mui/icons-material/Cancel'
 import { MaterialSuc } from '../../config/types'
-
-const ModalClassRx = styled(Box)({
-  position: 'absolute',
-  top: '50%', left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: 500,
-  maxHeight: '90vh',
-  overflowY: 'auto',
-  backgroundColor: '#fff',
-  padding: 16,
-  boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-  borderRadius: 8,
-})
 
 const tipos = ['Polines', 'Tablas', 'Duelas', 'Paredes', 'Otros']
 
@@ -44,7 +32,11 @@ interface MaterialModalProps {
 }
 
 const MaterialModal: React.FC<MaterialModalProps> = ({
-  open, material: initial,  onSave, onSaved, onClose
+  open,
+  material: initial,
+  onSave,
+  onSaved,
+  onClose,
 }) => {
   const [material, setMaterial] = useState<MaterialSuc>(initial)
   const [saving, setSaving] = useState(false)
@@ -55,38 +47,105 @@ const MaterialModal: React.FC<MaterialModalProps> = ({
     setMaterial(prev => ({ ...prev, [field]: value }))
   }
 
-
-  const submit = () => {
+  const submit = (e?: React.FormEvent) => {
+    e?.preventDefault()
     setSaving(true)
     onSave(material)
     onSaved?.()
-    onClose()
     setSaving(false)
+    onClose()
   }
-console.log("MaterialModal",material)
+
   return (
-    <Modal open={open} onClose={(_, r) => r==='backdropClick'?null:onClose()} disableEscapeKeyDown>
-      <ModalClassRx>
-        <IconButton onClick={onClose} sx={{position:'absolute',top:8,right:8}}><CloseIcon/></IconButton>
-        <DialogTitle>{initial.id?'Editar Material':'Agregar Nuevo Material'}</DialogTitle>
+    <Dialog
+      open={open}
+      onClose={(_, reason) => {
+        if (reason === 'backdropClick' || reason === 'escapeKeyDown') return
+        onClose()
+      }}
+      maxWidth="xs"
+      fullWidth
+    >
+      <Box component="form" onSubmit={submit}>
+        <DialogTitle sx={{backgroundColor:'var(--primary-color)',color:'white',pr: 5 }}>
+          {initial.id ? 'Editar Material' : 'Agregar Nuevo Material'}
+          <IconButton
+            onClick={onClose}
+            sx={{ position: 'absolute', top: 18, right: 20, color: 'white' }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <Divider sx={{ mb: 2 }} />
+
         <DialogContent>
-          <FormControl fullWidth margin="dense">
-            <InputLabel>Tipo</InputLabel>
-            <Select value={material.tipo} label="Tipo" onChange={e=>handleChange('tipo',e.target.value)}>
-              {tipos.map(t=><MenuItem key={t} value={t}>{t}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <TextField fullWidth margin="dense" label="Nombre" value={material.nombre} onChange={e=>handleChange('nombre',e.target.value)} />
-          <TextField fullWidth margin="dense" label="Precio ($)" type="number" value={material.precio} onChange={e=>handleChange('precio',parseFloat(e.target.value))} />
-          <TextField fullWidth margin="dense" label="Peso (kg)" type="number" value={material.peso} onChange={e=>handleChange('peso',parseFloat(e.target.value))} />
-          <TextField fullWidth margin="dense" label="Peso Máximo (kg)" type="number" value={material.pesoMaximo} onChange={e=>handleChange('pesoMaximo',parseFloat(e.target.value))} />
+          <Stack spacing={2}>
+            <FormControl fullWidth>
+              <InputLabel>Tipo</InputLabel>
+              <Select
+                value={material.tipo}
+                label="Tipo"
+                onChange={e => handleChange('tipo', e.target.value)}
+                required
+              >
+                {tipos.map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)}
+              </Select>
+            </FormControl>
+
+            <TextField
+              fullWidth
+              label="Nombre"
+              value={material.nombre}
+              onChange={e => handleChange('nombre', e.target.value)}
+              required
+            />
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                label="Precio ($)"
+                type="number"
+                value={material.precio}
+                onChange={e => handleChange('precio', Number(e.target.value))}
+                inputProps={{ min: 0, step: 0.01 }}
+                fullWidth
+                required
+              />
+              <TextField
+                label="Peso (kg)"
+                type="number"
+                value={material.peso}
+                onChange={e => handleChange('peso', Number(e.target.value))}
+                inputProps={{ min: 0, step: 0.01 }}
+                fullWidth
+                required
+              />
+            </Stack>
+            <TextField
+              label="Peso Máximo (kg)"
+              type="number"
+              value={material.pesoMaximo}
+              onChange={e => handleChange('pesoMaximo', Number(e.target.value))}
+              inputProps={{ min: 0, step: 0.01 }}
+              fullWidth
+            />
+          </Stack>
         </DialogContent>
+
         <DialogActions>
-          <Button onClick={onClose} color="secondary" disabled={saving}>Cancelar</Button>
-          <Button onClick={submit} variant="contained" disabled={saving}>{saving?'Guardando...':'Guardar'}</Button>
+          <Button onClick={onClose} color="inherit" startIcon={<CancelIcon />} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            startIcon={<SaveIcon />}
+            disabled={saving}
+          >
+            {saving ? 'Guardando...' : 'Guardar'}
+          </Button>
         </DialogActions>
-      </ModalClassRx>
-    </Modal>
+      </Box>
+    </Dialog>
   )
 }
 export default MaterialModal

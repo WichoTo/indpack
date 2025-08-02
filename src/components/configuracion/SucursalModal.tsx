@@ -1,36 +1,22 @@
-import React, { useEffect } from 'react'
+import React from 'react'
 import {
   Box,
   Typography,
   TextField,
   Button,
-  Grid,
-  Modal,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   IconButton,
+  Stack,
+  Divider,
 } from '@mui/material'
-import { styled } from '@mui/system'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
 import CloseIcon from '@mui/icons-material/Close'
 import { Sucursal, Document } from '../../config/types'
-import FileUploadPreview from '../general/FileUploadPreviewFiles' // Nuevo componente
-
-// Clase reusable para estilos de modal
-const ModalClassRx = styled(Box)(
-  {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: 500,
-    maxHeight: '90vh',
-    overflowY: 'auto',
-    backgroundColor: '#fff',
-    padding: '16px',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-    borderRadius: '8px',
-  }
-)
+import FileUploadPreview from '../general/FileUploadPreviewFiles'
 
 interface SucursalModalProps {
   open: boolean
@@ -47,11 +33,7 @@ const SucursalModal: React.FC<SucursalModalProps> = ({
   onSave,
   onClose,
 }) => {
-  useEffect(() => {
-    // Reiniciar índice de preview al cambiar sucursal
-  }, [sucursal])
-
-  // Handlers genéricos
+  // Handlers
   const handleField = (field: keyof Sucursal, value: any) => {
     setSucursal(prev => ({ ...prev, [field]: value }))
   }
@@ -75,7 +57,7 @@ const SucursalModal: React.FC<SucursalModalProps> = ({
     }))
   }
 
-  // Agrega archivos a fotoSucursal usando FileUploadPreview
+  // Manejo de archivos de imagen/documento
   const handleImageFiles = (files: File | File[]) => {
     const docs: Document[] = (Array.isArray(files) ? files : [files]).map(file => ({
       id: '',
@@ -88,85 +70,103 @@ const SucursalModal: React.FC<SucursalModalProps> = ({
     }))
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault()
     onSave(sucursal)
   }
 
   return (
-    <Modal
+    <Dialog
       open={open}
       onClose={(_, reason) => {
         if (reason === 'backdropClick' || reason === 'escapeKeyDown') return
         onClose()
       }}
-      disableEscapeKeyDown
+      maxWidth="sm"
+      fullWidth
+      
     >
-      <ModalClassRx>
-        <IconButton onClick={onClose} sx={{ position: 'absolute', top: 8, right: 8 }}>
-          <CloseIcon />
-        </IconButton>
-
-        <Typography variant="h6" gutterBottom>
+      <Box component="form" onSubmit={handleSubmit}>
+        <DialogTitle sx={{backgroundColor:'var(--primary-color)',color:'white',pr: 5 }}>
           {sucursal.nombreSucursal ? 'Editar Sucursal' : 'Nueva Sucursal'}
-        </Typography>
+          <IconButton
+            onClick={onClose}
+            sx={{
+              position: 'absolute',
+              top: 18,
+              right: 20,
+              color: 'white',
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <Divider sx={{ mb: 2 }} />
 
-        <Grid container spacing={2}>
-          {/* Campos básicos */}
-          <Grid >
+        <DialogContent>
+          <Stack spacing={2}>
             <TextField
               label="Nombre"
               value={sucursal.nombreSucursal}
               onChange={e => handleField('nombreSucursal', e.target.value)}
               fullWidth
+              required
             />
-          </Grid>
-          <Grid >
             <TextField
               label="Dirección"
               value={sucursal.direccion || ''}
               onChange={e => handleField('direccion', e.target.value)}
               fullWidth
             />
-          </Grid>
-          <Grid >
             <TextField
               label="Teléfono"
-              value={sucursal.telefono}
+              value={sucursal.telefono || ''}
               onChange={e => handleField('telefono', e.target.value)}
               fullWidth
             />
-          </Grid>
+          </Stack>
 
-          {/* Áreas */}
-          <Grid >
-            <Typography variant="subtitle1" gutterBottom>
-              Áreas
-            </Typography>
-            {(sucursal.areas || []).map((area, idx) => (
-              <Grid container spacing={1} alignItems="center" key={idx}>
-                <Grid >
-                  <TextField
-                    label={`Área ${idx + 1}`}
-                    value={area}
-                    onChange={e => handleAreaField(idx, e.target.value)}
-                    fullWidth
-                  />
-                </Grid>
-                <Grid>
-                  <IconButton onClick={() => handleRemoveArea(idx)}>
-                    <RemoveIcon />
-                  </IconButton>
-                </Grid>
-              </Grid>
-            ))}
-            <Button startIcon={<AddIcon />} onClick={handleAddArea} sx={{ mt: 1 }}>
-              Agregar Área
-            </Button>
-          </Grid>
+          <Box mt={3}>
+            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+              <Typography variant="subtitle1" fontWeight={600}>
+                Áreas
+              </Typography>
+              <Button
+                size="small"
+                startIcon={<AddIcon />}
+                onClick={handleAddArea}
+                sx={{ minWidth: 0, px: 1 }}
+                variant="outlined"
+              >
+                Agregar
+              </Button>
+            </Stack>
+            <Stack spacing={1}>
+              {(sucursal.areas && sucursal.areas.length > 0) ? (
+                sucursal.areas.map((area, idx) => (
+                  <Stack direction="row" alignItems="center" spacing={1} key={idx}>
+                    <TextField
+                      size="small"
+                      label={`Área ${idx + 1}`}
+                      value={area}
+                      onChange={e => handleAreaField(idx, e.target.value)}
+                      sx={{ flex: 1 }}
+                    />
+                    <IconButton onClick={() => handleRemoveArea(idx)} color="error" size="small">
+                      <RemoveIcon />
+                    </IconButton>
+                  </Stack>
+                ))
+              ) : (
+                <Typography variant="body2" color="text.secondary" mt={1} mb={2}>
+                  No hay áreas agregadas.
+                </Typography>
+              )}
+            </Stack>
+          </Box>
 
-          {/* FileUploadPreview para fotos/documentos */}
-          <Grid >
-            <Typography variant="subtitle1" gutterBottom>
+          <Box mt={3}>
+            <Typography variant="subtitle1" fontWeight={600} mb={1}>
               Imágenes / Documentos
             </Typography>
             <FileUploadPreview
@@ -174,23 +174,23 @@ const SucursalModal: React.FC<SucursalModalProps> = ({
               onChange={handleImageFiles}
               multiple
               accept="image/*,.pdf"
-              width={150}
-              height={150}
+              width={140}
+              height={140}
               disabled={false}
             />
-          </Grid>
-        </Grid>
+          </Box>
+        </DialogContent>
 
-        <Box textAlign="right" mt={3}>
-          <Button onClick={onClose} sx={{ mr: 1 }}>
+        <DialogActions>
+          <Button onClick={onClose} color="inherit">
             Cancelar
           </Button>
-          <Button variant="contained" onClick={handleSubmit}>
+          <Button variant="contained" type="submit">
             Guardar
           </Button>
-        </Box>
-      </ModalClassRx>
-    </Modal>
+        </DialogActions>
+      </Box>
+    </Dialog>
   )
 }
 

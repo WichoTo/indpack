@@ -1,6 +1,15 @@
-// MaderaExtraRow.tsx
 import React, { useState } from 'react';
-import { Box, Select, MenuItem, Typography, Tooltip, IconButton, TextField } from '@mui/material';
+import {
+  Box,
+  Select,
+  MenuItem,
+  Typography,
+  Tooltip,
+  IconButton,
+  TextField,
+  Paper,
+  Divider,
+} from '@mui/material';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { evaluate } from 'mathjs';
 import { Costeo, Producto, Material } from '../../config/types';
@@ -29,105 +38,147 @@ const MaderaExtraRow: React.FC<Props> = ({
     factor: Number(producto.factor) || 1,
   };
 
-  // Fórmula base o recuperada
   const initialFormula = producto.maderaExtra?.formulaMedida ?? `=${producto.maderaExtra?.medida ?? 0}`;
 
   return (
-    <Box
-      display="grid"
-      gridTemplateColumns={{ xs:'1fr', sm:'1fr 1fr 1fr' }}
-      gap={2} mb={1}
-      alignItems="center"
+    <Paper
+      variant="outlined"
+      sx={{
+        p: { xs: 2, md: 3 },
+        mb: 2,
+        background: "#f9f9fa",
+        borderLeft: "4px solid var(--primary-color)",
+      }}
     >
-      {/* Título + info */}
-      <Box sx={{ gridColumn:'span 3', display:'flex', alignItems:'center' }}>
-        <Typography variant="h6" sx={{ fontWeight:'bold', color:'var(--primary-color)' }}>
-          MADERA EXTRA
+      {/* Título con info */}
+      <Box display="flex" alignItems="center" mb={2} gap={1}>
+        <Typography variant="h6" fontWeight={800} color="var(--primary-color)">
+          Madera Extra
         </Typography>
         <Tooltip
-          title={<Box component="pre" sx={{ whiteSpace:'pre-wrap', fontSize:'0.75rem' }}>
-            Variables disponibles:{'\n'}
-            {Object.entries(scope).map(([k,v])=>`${k}: ${v}`).join('\n')}
-          </Box>}
+          title={
+            <Box component="pre" sx={{ whiteSpace:'pre-wrap', fontSize:'0.85rem', maxWidth:250 }}>
+              <strong>Variables disponibles:</strong>{'\n'}
+              {Object.entries(scope).map(([k, v]) => `${k}: ${v}`).join('\n')}
+            </Box>
+          }
           arrow
           open={tooltipOpen}
-          onClose={()=>setTooltipOpen(false)}
+          onClose={() => setTooltipOpen(false)}
           disableHoverListener
           disableFocusListener
           disableTouchListener
         >
-          <IconButton size="small" sx={{ ml:1 }} onClick={()=>setTooltipOpen(o=>!o)}>
-            <InfoOutlinedIcon fontSize="inherit"/>
+          <IconButton size="small" onClick={() => setTooltipOpen(o => !o)}>
+            <InfoOutlinedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
       </Box>
 
-      {/* Tipo de polín */}
-      <Box>
-        <Select
-          size="small" margin="dense" fullWidth
-          value={producto.maderaExtra?.tipoPolin || calcularTipoPolin(producto.peso??0, materiales)}
-          onChange={e=>{
-            const tipo = e.target.value as string;
-            setCosteo(prev=>prev && ({
-              ...prev,
-              productos: prev.productos.map(p=>
-                p.id===producto.id
-                  ? { ...p, maderaExtra:{ ...(p.maderaExtra||{}), tipoPolin:tipo } }
-                  : p
-              )
-            }));
-            if(producto.id) handleCalcularTotales(producto.id, setCosteo, materiales);
-          }}
-          displayEmpty
-        >
-          <MenuItem value="">Selecciona tipo de polín</MenuItem>
-          {tiposMateriales.Polines.map(v=> <MenuItem key={v} value={v}>{v}</MenuItem> )}
-        </Select>
-      </Box>
+      <Divider sx={{ mb: 2 }} />
 
-      {/* Input que muestra el resultado y abre el editor */}
-      <Box>
-        <TextField
-          label="Medida (cm)"
-          value={String(producto.maderaExtra?.medida ?? '')}
-          onClick={()=>setEditorOpen(true)}
-          InputProps={{ readOnly:true }}
-          size="small" margin="dense" fullWidth
-        />
-        <FormulaEditorDialog
-          open={editorOpen}
-          onClose={()=>setEditorOpen(false)}
-          initial={initialFormula}
-          variables={scope}
-          onAccept={newFormula=>{
-            // calcular el valor
-            let val=0;
-            try {
-              const expr = newFormula.startsWith('=') ? newFormula.slice(1) : newFormula;
-              val = evaluate(expr, scope) as number;
-            } catch {
-              val = parseFloat(newFormula) || 0;
+      <Box
+        display="grid"
+        gridTemplateColumns={{
+          xs: '1fr',
+          sm: '1fr 1fr'
+        }}
+        gap={2}
+        alignItems="center"
+      >
+        {/* Tipo de polín */}
+        <Box>
+          <Typography fontWeight={700} fontSize={14} sx={{ mb: 0.5 }}>
+            Tipo de Polín
+          </Typography>
+          <Select
+            size="small"
+            fullWidth
+            value={producto.maderaExtra?.tipoPolin || calcularTipoPolin(producto.peso ?? 0, materiales)}
+            onChange={e => {
+              const tipo = e.target.value as string;
+              setCosteo(prev => prev && ({
+                ...prev,
+                productos: prev.productos.map(p =>
+                  p.id === producto.id
+                    ? { ...p, maderaExtra: { ...(p.maderaExtra || {}), tipoPolin: tipo } }
+                    : p
+                )
+              }));
+              if (producto.id) handleCalcularTotales(producto.id, setCosteo, materiales);
+            }}
+            displayEmpty
+          >
+            <MenuItem value="">Selecciona tipo de polín</MenuItem>
+            {tiposMateriales.Polines.map(v =>
+              <MenuItem key={v} value={v}>{v}</MenuItem>
+            )}
+          </Select>
+        </Box>
+
+        {/* Medida con editor de fórmula */}
+        <Box>
+          <Typography fontWeight={700} fontSize={14} sx={{ mb: 0.5 }}>
+            Medida&nbsp;(cm)
+          </Typography>
+          <Tooltip
+            title={
+              producto.maderaExtra?.formulaMedida
+                ? <span>Fórmula: <strong>{producto.maderaExtra.formulaMedida}</strong></span>
+                : "Haz click para editar fórmula"
             }
-            // actualizar estado
-            setCosteo(prev=>prev && ({
-              ...prev,
-              productos: prev.productos.map(p=>
-                p.id===producto.id
-                  ? { ...p, maderaExtra:{
-                      ...(p.maderaExtra||{}),
-                      medida: val,
-                      formulaMedida: newFormula
-                    }}
-                  : p
-              )
-            }));
-            if(producto.id) handleCalcularTotales(producto.id, setCosteo, materiales);
-            setEditorOpen(false);
-          }}
-        />
+            arrow
+            placement="top"
+          >
+            <TextField
+              value={String(producto.maderaExtra?.medida ?? '')}
+              onClick={() => setEditorOpen(true)}
+              InputProps={{ readOnly: true }}
+              size="small"
+              fullWidth
+              sx={{
+                cursor: "pointer",
+                background: "#fff",
+                fontWeight: 600,
+                '& input': { cursor: 'pointer' }
+              }}
+            />
+          </Tooltip>
+          <FormulaEditorDialog
+            open={editorOpen}
+            onClose={() => setEditorOpen(false)}
+            initial={initialFormula}
+            variables={scope}
+            onAccept={newFormula => {
+              let val = 0;
+              try {
+                const expr = newFormula.startsWith('=') ? newFormula.slice(1) : newFormula;
+                val = evaluate(expr, scope) as number;
+              } catch {
+                val = parseFloat(newFormula) || 0;
+              }
+              setCosteo(prev => prev && ({
+                ...prev,
+                productos: prev.productos.map(p =>
+                  p.id === producto.id
+                    ? {
+                        ...p,
+                        maderaExtra: {
+                          ...(p.maderaExtra || {}),
+                          medida: val,
+                          formulaMedida: newFormula
+                        }
+                      }
+                    : p
+                )
+              }));
+              if (producto.id) handleCalcularTotales(producto.id, setCosteo, materiales);
+              setEditorOpen(false);
+            }}
+          />
+        </Box>
       </Box>
-    </Box>
+    </Paper>
   );
 };
 

@@ -56,7 +56,7 @@ function App() {
                             path={child.path.replace(/^\//, '')}
                             element={childWrapped}
                           />
-                        );
+                        ); 
                       })}
                     </Route>
                   );

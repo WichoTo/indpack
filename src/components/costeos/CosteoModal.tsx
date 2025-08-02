@@ -1,4 +1,3 @@
-// components/costeos/CosteoModal.tsx
 import React, { useEffect, useState } from 'react';
 import {
   Autocomplete,
@@ -13,10 +12,13 @@ import {
   MenuItem,
   Select,
   TextField,
-  Typography
+  Typography,
+  Stack,
+  Divider,
+  DialogTitle,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import { Costeo, Document, Empresa, ModalStyle } from '../../config/types';
+import { Costeo, Document, Empresa } from '../../config/types';
 import { useFetchClientes, useFetchEmpresas } from '../../hooks/useFetchFunctions';
 import { images } from '../../config/variables';
 import { fechaActual } from '../../hooks/useDateUtils';
@@ -24,6 +26,8 @@ import { Temporal } from '@js-temporal/polyfill';
 import DocumentUploadList from '../general/DocumentUploadList';
 import TablaProductos from './TablaProductos';
 import { useListasMateriales } from '../../hooks/useFetchCosteo';
+import { pdf } from '@react-pdf/renderer';
+import CotizacionPDF from './CotizacionPDF';
 
 interface CosteoModalProps {
   open: boolean;
@@ -34,6 +38,31 @@ interface CosteoModalProps {
   costeos: Costeo[];
   onSave: (costeo: Costeo) => void;
 }
+const estatusOptions = [
+  'Costeo',
+  'Cancelado',
+  'Cotizado',
+  'Pagado',
+  'Produccion',
+  'Entregado'
+];
+
+
+// --- ESTILO DEL MODAL PARA OCUPAR 80% ---
+const ModalStyleFull = {
+  width: '80vw',
+  minWidth: 340,
+  maxWidth: '98vw',
+  height: '80vh',
+  maxHeight: '98vh',
+  borderRadius: 12,
+  display: 'flex',
+  flexDirection: 'column' as const,
+  overflow: 'hidden',
+  // Opcional: agrega sombra
+  boxShadow: '0 4px 32px 4px #0002',
+  background: '#fff',
+};
 
 const CosteoModal: React.FC<CosteoModalProps> = ({
   open,
@@ -42,17 +71,18 @@ const CosteoModal: React.FC<CosteoModalProps> = ({
   costeo,
   setCosteo,
   costeos,
-  onSave
+  onSave,
 }) => {
   const { tiposMateriales } = useListasMateriales();
   const { empresas } = useFetchEmpresas(sucursalid);
   const { clientes } = useFetchClientes(sucursalid);
   const [selectedEmpresa, setSelectedEmpresa] = useState<Empresa | null>(null);
+
   const handleChange = (field: keyof Costeo, value: any) => {
     setCosteo(prev => ({ ...prev, [field]: value }));
   };
 
-  // Regenera folio cuando cambia la empresa
+  // Genera folio automático al cambiar empresa
   useEffect(() => {
     if (!selectedEmpresa) return;
     const now = Temporal.Now.plainDateTimeISO('America/Mexico_City');
@@ -70,98 +100,77 @@ const CosteoModal: React.FC<CosteoModalProps> = ({
     handleChange('empresaid', empresaid);
   };
 
-  const handleUploadFormato = async (files: FileList) => {
-    const nuevos: Document[] = Array.from(files).map(file => ({
-      id: crypto.randomUUID(),
-      nombre: file.name,
-      file
-    }));
-    setCosteo(prev => ({
-      ...prev,
-      referenciasFormatoMedidas: [...(prev.referenciasFormatoMedidas || []), ...nuevos]
-    }));
-  };
+  // Archivos: formato, comunicaciones, imágenes
+  const handleUploadArchivo = (tipo: keyof Pick<Costeo, "referenciasFormatoMedidas" | "referenciasComunicaciones" | "referenciasImagenes">) =>
+    (files: FileList) => {
+      const nuevos: Document[] = Array.from(files).map(file => ({
+        id: crypto.randomUUID(),
+        nombre: file.name,
+        file,
+      }));
+      setCosteo(prev => ({
+        ...prev,
+        [tipo]: [...(prev[tipo] || []), ...nuevos]
+      }));
+    };
 
-  const handleDeleteFormato = async (doc: Document) => {
-    setCosteo(prev => ({
-      ...prev,
-      referenciasFormatoMedidas: (prev.referenciasFormatoMedidas || []).filter(d => d.id !== doc.id)
-    }));
-  };
-    const handleUploadComunicaciones = async (files: FileList) => {
-    const nuevos: Document[] = Array.from(files).map(file => ({
-      id: crypto.randomUUID(),
-      nombre: file.name,
-      file
-    }));
-    setCosteo(prev => ({
-      ...prev,
-      referenciasComunicaciones: [...(prev.referenciasComunicaciones || []), ...nuevos]
-    }));
-  };
-
-  const handleDeleteComunicaciones = async (doc: Document) => {
-    setCosteo(prev => ({
-      ...prev,
-      referenciasComunicaciones: (prev.referenciasComunicaciones || []).filter(d => d.id !== doc.id)
-    }));
-  };
-
-    const handleUploadImagenes = async (files: FileList) => {
-    const nuevos: Document[] = Array.from(files).map(file => ({
-      id: crypto.randomUUID(),
-      nombre: file.name,
-      file
-    }));
-    setCosteo(prev => ({
-      ...prev,
-      referenciasImagenes: [...(prev.referenciasImagenes || []), ...nuevos]
-    }));
-  };
-
-  const handleDeleteImagenes = async (doc: Document) => {
-    setCosteo(prev => ({
-      ...prev,
-      referenciasImagenes: (prev.referenciasImagenes || []).filter(d => d.id !== doc.id)
-    }));
-  };
-
+  const handleDeleteArchivo = (tipo: keyof Pick<Costeo, "referenciasFormatoMedidas" | "referenciasComunicaciones" | "referenciasImagenes">) =>
+    (doc: Document) => {
+      setCosteo(prev => ({
+        ...prev,
+        [tipo]: (prev[tipo] || []).filter(d => d.id !== doc.id)
+      }));
+    };
 
   const handleClose = () => {
     onClose();
     setSelectedEmpresa(null);
   };
+
   const clientesFiltrados = clientes
     .filter(c => c.empresaid === costeo.empresaid)
     .map(c => ({ id: c.id, label: c.nombreCompleto }));
 
-  // Al cambiar el cliente seleccionado (o escribir uno nuevo)
-  // Dentro de CosteoModal, justo donde defines handleClienteChange:
-const handleClienteChange = (
-  _e: any,
-  newValue: { id?: string; label: string } | string
-) => {
-  if (typeof newValue === 'string') {
-    // Texto libre: cliente nuevo
-    handleChange('nombreCompleto', newValue);
-    handleChange('clienteid', undefined);
-    handleChange('correoElectronico', '');
-    handleChange('celular', '');
-  } else {
-    // Seleccionado de la lista: cliente existente
-    const clienteObj = clientes.find(c => c.id === newValue.id);
-    if (!clienteObj) return;
+  const handleClienteChange = (
+    _e: any,
+    newValue: { id?: string; label: string } | string
+  ) => {
+    if (typeof newValue === 'string') {
+      handleChange('nombreCompleto', newValue);
+      handleChange('clienteid', undefined);
+      handleChange('correoElectronico', '');
+      handleChange('celular', '');
+    } else {
+      const clienteObj = clientes.find(c => c.id === newValue.id);
+      if (!clienteObj) return;
+      handleChange('nombreCompleto', clienteObj.nombreCompleto);
+      handleChange('clienteid', clienteObj.id);
+      handleChange('correoElectronico', clienteObj.correoElectronico);
+      handleChange('celular', clienteObj.celular);
+    }
+  };
 
-    handleChange('nombreCompleto', clienteObj.nombreCompleto);
-    handleChange('clienteid', clienteObj.id);
-    handleChange('correoElectronico', clienteObj.correoElectronico);
-    handleChange('celular', clienteObj.celular);
-    // Si tu cliente tiene más campos, p. ej. dirección:
-    // handleChange('direccion', clienteObj.direccion);
-  }
+const handleDownloadCotizacionPdf = async (costeo:Costeo) => {
+  // Si tienes imágenes dinámicas (logos, etc), aquí conviértelas a Base64 si lo deseas
+
+  // 1. Generar el PDF como blob
+  const blobPdf = await pdf(
+    <CotizacionPDF costeo={costeo} />
+  ).toBlob();
+
+  // 2. Crear URL temporal y forzar descarga
+  const blobUrl = URL.createObjectURL(blobPdf);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = `${costeo.folio || 'Cotizacion_IndPack'}.pdf`;
+  document.body.appendChild(a); // Algunos browsers lo requieren
+  a.click();
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  }, 100);
 };
 
-  
   return (
     <Dialog
       open={open}
@@ -171,54 +180,68 @@ const handleClienteChange = (
       }}
       disableEscapeKeyDown
       maxWidth={false}
-      PaperProps={{ style: ModalStyle }}
+      fullWidth
+      PaperProps={{ style: ModalStyleFull }}
     >
-      <IconButton
-        onClick={handleClose}
-        size="small"
-        sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}
+      <DialogTitle sx={{display: 'flex', justifyContent: 'end' ,backgroundColor:'var(--primary-color)',color:'white',pr: 5 }}>
+          <IconButton
+            aria-label="close"
+            onClick={onClose}
+            sx={{ color: 'white' }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+      {/* Header - logo y cotización */}
+      <DialogContent
+        sx={{
+          p: { xs: 1, md: 3 },
+          flex: 1,
+          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
       >
-        <CloseIcon />
-      </IconButton>
-
-      <DialogContent sx={{ p: 2 }}>
-        {/* Encabezado */}
-        <Box display="flex" justifyContent="space-between" mb={4}>
-          <Box>
-            <img src={images.logo} alt="Logo" className="logo" />
-            <Typography variant="body2" color="var(--secondary-color)">
-              Paseo de las Lomas # 6383, Col. Lomas del Colli.
-            </Typography>
-            <Typography variant="body2" color="var(--secondary-color)">
-              Zapopan, Jal. - 45010 CP
-            </Typography>
-            <Typography variant="body2" color="var(--secondary-color)">
-              Tel. +52 (33)-3165-0414
-            </Typography>
-          </Box>
-          <Box textAlign="right" mr={5}>
-            <Typography variant="h6" fontWeight="bold" color="var(--secondary-color)">
+        <Stack direction={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems="flex-start" spacing={3} mb={2}>
+          <Stack direction="row" alignItems="center" spacing={2}>
+            <Box>
+              <img src={images.logo} alt="Logo" style={{ height: 44, marginBottom: 3 }} />
+              <Typography variant="body2" color="var(--secondary-color)">
+                Paseo de las Lomas # 6383, Col. Lomas del Colli.
+              </Typography>
+              <Typography variant="body2" color="var(--secondary-color)">
+                Zapopan, Jal. - 45010 CP
+              </Typography>
+              <Typography variant="body2" color="var(--secondary-color)">
+                Tel. +52 (33)-3165-0414
+              </Typography>
+            </Box>
+          </Stack>
+          <Stack alignItems="flex-end" mr={1}>
+            <Typography variant="h6" fontWeight={700} color="var(--secondary-color)">
               COTIZACIÓN
             </Typography>
-            <Typography variant="body2" color="var(--secondary-color)">
+            <Typography variant="body2" color="var(--secondary-color)" fontWeight={500}>
               {costeo.folio}
             </Typography>
             <Typography variant="body2" color="var(--secondary-color)">
               {fechaActual}
             </Typography>
-          </Box>
-        </Box>
+          </Stack>
+        </Stack>
 
-        {/* Dos columnas: Empresa/Cliente/Correo/Celular y Dirección/Envio/Fecha/Destino */}
-        <Box display="grid" gridTemplateColumns={{ xs: '1fr', md: '1fr 1fr' }} gap={2}>
-          {/* Columna Izquierda */}
-          <Box display="grid" gridTemplateColumns="1fr" gap={2}>
-            <FormControl fullWidth size="small" margin="normal">
+        <Divider sx={{ mb: 3 }} />
+
+        {/* Formulario de cliente y empresa */}
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
+          {/* Columna 1 */}
+          <Stack spacing={2} flex={1}>
+            <FormControl fullWidth size="small">
               <InputLabel id="empresa-select-label">Empresa</InputLabel>
               <Select
                 labelId="empresa-select-label"
                 label="Empresa"
-                value={costeo.empresaid??""}
+                value={costeo.empresaid ?? ""}
                 onChange={e => handleEmpresaChange(e.target.value)}
               >
                 {empresas.map(e => (
@@ -228,69 +251,68 @@ const handleClienteChange = (
                 ))}
               </Select>
             </FormControl>
-             <Autocomplete
-                freeSolo
-                disableClearable
-                options={clientesFiltrados}
-                getOptionLabel={opt =>
-                  typeof opt === 'string' ? opt : opt.label
-                }
-                value={
-                  { id: costeo.clienteid, label: costeo.nombreCompleto }
-                }
-                onChange={handleClienteChange}
-                onInputChange={(_e, input) => {
-                  // Para que al escribir vaya cambiando el nombre
-                  handleChange('nombreCompleto', input);
-                  handleChange('clienteid', undefined);
-                }}
-                renderInput={params => (
-                  <TextField
-                    {...params}
-                    label="Cliente"
-                    size="small"
-                    margin="normal"
-                    fullWidth
-                  />
-                )}
-              />
+            <Autocomplete
+              freeSolo
+              disableClearable
+              options={clientesFiltrados}
+              getOptionLabel={opt =>
+                typeof opt === 'string' ? opt : opt.label
+              }
+              value={{
+                id: costeo.clienteid,
+                label: costeo.nombreCompleto,
+              }}
+              onChange={handleClienteChange}
+              onInputChange={(_e, input) => {
+                handleChange('nombreCompleto', input);
+                handleChange('clienteid', undefined);
+              }}
+              renderInput={params => (
+                <TextField
+                  {...params}
+                  label="Cliente"
+                  size="small"
+                  fullWidth
+                />
+              )}
+            />
             <TextField
-              fullWidth size="small" margin="normal"
+              fullWidth size="small"
               label="Correo"
               value={costeo.correoElectronico}
               onChange={e => handleChange('correoElectronico', e.target.value)}
             />
             <TextField
-              fullWidth size="small" margin="normal"
+              fullWidth size="small"
               label="Celular"
               value={costeo.celular}
               onChange={e => handleChange('celular', e.target.value)}
             />
-          </Box>
+          </Stack>
 
-          {/* Columna Derecha */}
-          <Box display="grid" gridTemplateColumns="1fr" gap={2}>
+          {/* Columna 2 */}
+          <Stack spacing={2} flex={1}>
             <TextField
-              fullWidth size="small" margin="normal"
+              fullWidth size="small"
               label="Dirección Destino"
               value={costeo.direccion || ''}
               onChange={e => handleChange('direccion', e.target.value)}
             />
             <TextField
-              fullWidth size="small" margin="normal"
+              fullWidth size="small"
               label="Forma Envío"
               value={costeo.formaEnvio || ''}
               onChange={e => handleChange('formaEnvio', e.target.value)}
             />
             <TextField
-              fullWidth size="small" margin="normal"
+              fullWidth size="small"
               label="Fecha Envío"
               type="date"
               InputLabelProps={{ shrink: true }}
               value={costeo.fechaEnvio || ''}
               onChange={e => handleChange('fechaEnvio', e.target.value)}
             />
-            <FormControl fullWidth size="small" margin="normal">
+            <FormControl fullWidth size="small">
               <InputLabel id="destino-select-label">Destino</InputLabel>
               <Select
                 labelId="destino-select-label"
@@ -303,69 +325,62 @@ const handleClienteChange = (
                 <MenuItem value="Internacional">Internacional</MenuItem>
               </Select>
             </FormControl>
-          </Box>
-        </Box>
+          </Stack>
+        </Stack>
 
-        {/* Proyecto y Descripción */}
-        <Box display="flex" gap={1} mt={2}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mt={2}>
           <TextField
-            fullWidth size="small" margin="normal"
+            fullWidth size="small"
             label="Proyecto"
             value={costeo.tituloPedido || ''}
             onChange={e => handleChange('tituloPedido', e.target.value)}
           />
-        </Box>
-        <Box display="flex" gap={1}>
           <TextField
-            fullWidth size="small" margin="normal"
+            fullWidth size="small"
             label="Descripción"
             value={costeo.descripcion || ''}
             onChange={e => handleChange('descripcion', e.target.value)}
           />
-        </Box>
+        </Stack>
 
         {/* Documentos y tabla de productos */}
-          <Box
-            display="grid"
-            gridTemplateColumns={{ xs: '1fr', md: 'repeat(3, 1fr)' }}
-            gap={2}
-            width="100%"
-          >
-            <Box> 
-              <Typography variant="body1" color="var(--primary-color)">
-                Formato Medida
-              </Typography>
-              <DocumentUploadList
-                documents={costeo.referenciasFormatoMedidas || []}
-                onUpload={handleUploadFormato}
-                onDelete={handleDeleteFormato}
-                maxFiles={10}
-              />
-            </Box>
-            <Box> 
-              <Typography variant="body1" color="var(--primary-color)">
-                Referencias Comunicaciones
-              </Typography>
-              <DocumentUploadList
-                documents={costeo.referenciasComunicaciones || []}
-                onUpload={handleUploadComunicaciones}
-                onDelete={handleDeleteComunicaciones}
-                maxFiles={10}
-              />
-            </Box>
-            <Box> 
-              <Typography variant="body1" color="var(--primary-color)">
-                Imagenes
-              </Typography>
-              <DocumentUploadList
-                documents={costeo.referenciasImagenes || []}
-                onUpload={handleUploadImagenes}
-                onDelete={handleDeleteImagenes}
-                maxFiles={10}
-              />
-            </Box>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} mt={3}>
+          <Box flex={1}>
+            <Typography variant="subtitle1" color="var(--primary-color)" mb={1}>
+              Formato Medida
+            </Typography>
+            <DocumentUploadList
+              documents={costeo.referenciasFormatoMedidas || []}
+              onUpload={files => Promise.resolve(handleUploadArchivo('referenciasFormatoMedidas')(files))}
+              onDelete={doc => Promise.resolve(handleDeleteArchivo('referenciasFormatoMedidas')(doc))}
+              maxFiles={10}
+            />
           </Box>
-        <Box mt={2}>
+          <Box flex={1}>
+            <Typography variant="subtitle1" color="var(--primary-color)" mb={1}>
+              Referencias Comunicaciones
+            </Typography>            
+            <DocumentUploadList
+              documents={costeo.referenciasComunicaciones || []}
+              onUpload={files => Promise.resolve(handleUploadArchivo('referenciasComunicaciones')(files))}
+              onDelete={doc => Promise.resolve(handleDeleteArchivo('referenciasComunicaciones')(doc))}
+              maxFiles={10}
+            />
+          </Box>
+          <Box flex={1}>
+            <Typography variant="subtitle1" color="var(--primary-color)" mb={1}>
+              Imágenes
+            </Typography>            
+            <DocumentUploadList
+              documents={costeo.referenciasImagenes || []}
+              onUpload={files => Promise.resolve(handleUploadArchivo('referenciasImagenes')(files))}
+              onDelete={doc => Promise.resolve(handleDeleteArchivo('referenciasImagenes')(doc))}
+              maxFiles={10}
+            />
+          </Box>
+        </Stack>
+
+        <Box mt={3}>
           <TablaProductos
             costeo={costeo}
             setCosteo={setCosteo}
@@ -375,8 +390,32 @@ const handleClienteChange = (
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: 2, pb: 2 }}>
-        <Button variant="contained" color="primary" onClick={() => onSave(costeo)}>
+      <DialogActions sx={{
+        px: 3,
+        pb: 3,
+        justifyContent: 'flex-end',
+        background: '#f6f6f9'
+      }}>
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <InputLabel id="estatus-label">Estatus</InputLabel>
+          <Select
+            labelId="estatus-label"
+            value={costeo.estatus}
+            label="Estatus"
+            onChange={e => handleChange('estatus', e.target.value)}
+          >
+            {estatusOptions.map(estatus => (
+              <MenuItem key={estatus} value={estatus}>{estatus}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <Button variant="contained" color="primary" onClick={() => handleDownloadCotizacionPdf(costeo)}>
+          Descargar Cotización PDF
+        </Button>
+        <Button variant="outlined" size="large" color="primary" onClick={handleClose}>
+          Cancelar
+        </Button>
+        <Button variant="contained" size="large" color="primary" onClick={() => onSave(costeo)}>
           Guardar Costeo
         </Button>
       </DialogActions>

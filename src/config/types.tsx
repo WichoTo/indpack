@@ -122,7 +122,7 @@ export interface Costeo {
   fechaEnvio?: string;
   tituloPedido: string;
   descripcion?: string;
-  estado: string;
+  estatus: 'Costeo'|'Cancelado'|'Cotizado'|'Pagado'|'Produccion'|'Entregado';
   fechaCreacion: string;
   
   productos: Producto[];
@@ -216,6 +216,8 @@ export interface Producto {
   paredes: Paredes;
   duelas: Duelas;
   [key: string]: any;
+
+  precioFinal?:number
 
 }
 export interface BolsaAntihumedad{

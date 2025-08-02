@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
@@ -7,8 +7,10 @@ import {
   TextField,
   Button,
   IconButton,
+  Typography,
+  Stack,
   Box,
-  Typography
+  Divider
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { Empresa } from '../../config/types';
@@ -28,6 +30,8 @@ const EmpresaModal: React.FC<EmpresaModalProps> = ({
   setEmpresa,
   onSave,
 }) => {
+  const [touched, setTouched] = useState(false);
+
   const handleChange = (
     field: keyof Omit<Empresa, 'id' | 'userid' | 'sucursalid'>,
     value: string
@@ -35,69 +39,84 @@ const EmpresaModal: React.FC<EmpresaModalProps> = ({
     setEmpresa(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async () => {
+  // Validaciones básicas (puedes expandirlas)
+  const isValid =
+    empresa.nombre.trim() !== '' 
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    setTouched(true);
+    if (!isValid) return;
     await onSave(empresa);
   };
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ m: 0, p: 2 }}>
-        <Typography variant="h6">
-          {empresa.id ? 'Editar Empresa' : 'Nueva Empresa'}
-        </Typography>
-        <IconButton
-          aria-label="close"
-          onClick={onClose}
-          sx={{ position: 'absolute', right: 8, top: 8 }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
+      <Box component="form" onSubmit={handleSubmit}>
+        <DialogTitle sx={{backgroundColor:'var(--primary-color)',color:'white',pr: 5 }}>
+          <Typography variant="h6" fontWeight={700}>
+            {empresa.id ? 'Editar Empresa' : 'Nueva Empresa'}
+          </Typography>
+          <IconButton
+            aria-label="close"
+            onClick={onClose}
+            sx={{ position: 'absolute', right: 16, top: 18, color: 'grey.700' }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <Divider />
 
-      <DialogContent dividers>
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-            gap: 2
-          }}
-        >
-          <TextField
-            label="Nombre de la empresa"
-            value={empresa.nombre}
-            onChange={e => handleChange('nombre', e.target.value)}
-            fullWidth
-            autoFocus
-            sx={{ gridColumn: '1 / -1' }}
-          />
+        <DialogContent>
+          <Stack spacing={2} mt={1}>
+            <TextField
+              label="Nombre de la empresa"
+              value={empresa.nombre}
+              onChange={e => handleChange('nombre', e.target.value)}
+              required
+              autoFocus
+              error={touched && empresa.nombre.trim() === ''}
+              helperText={touched && empresa.nombre.trim() === '' ? "El nombre es requerido" : ''}
+            />
+            <TextField
+              label="Nombre de contacto"
+              value={empresa.nombrecontacto}
+              onChange={e => handleChange('nombrecontacto', e.target.value)}
+              required
+              error={touched && empresa.nombrecontacto.trim() === ''}
+            />
+            <TextField
+              label="Correo de contacto"
+              type="email"
+              value={empresa.correoconctacto}
+              onChange={e => handleChange('correoconctacto', e.target.value)}
+              required
+              error={touched && empresa.correoconctacto?.trim() === ''}
+            />
+            <TextField
+              label="Teléfono"
+              value={empresa.telefono}
+              onChange={e => handleChange('telefono', e.target.value)}
+              required
+              error={touched && empresa.telefono.trim() === ''}
+            />
+          </Stack>
+        </DialogContent>
 
-          <TextField
-            label="Nombre de contacto"
-            value={empresa.nombrecontacto}
-            onChange={e => handleChange('nombrecontacto', e.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Correo de contacto"
-            type="email"
-            value={empresa.correoconctacto}
-            onChange={e => handleChange('correoconctacto', e.target.value)}
-            fullWidth
-          />
-
-          <TextField
-            label="Teléfono"
-            value={empresa.telefono}
-            onChange={e => handleChange('telefono', e.target.value)}
-            fullWidth
-          />
-        </Box>
-      </DialogContent>
-
-      <DialogActions sx={{ p: 2 }}>
-        <Button onClick={onClose}>Cancelar</Button>
-        <Button variant="contained" onClick={handleSubmit}>Guardar</Button>
-      </DialogActions>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={onClose} color="inherit">
+            Cancelar
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSubmit}
+            type="submit"
+            disabled={!isValid}
+          >
+            Guardar
+          </Button>
+        </DialogActions>
+      </Box>
     </Dialog>
   );
 };

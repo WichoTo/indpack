@@ -825,6 +825,133 @@ export async function actualizarCosteo(
   const storage = supabase.storage.from('costeos');
   const uploadedPaths: string[] = [];
 
+  // Subir documentos y devolver Document actualizado
+  async function uploadDoc(doc: Document): Promise<Document> {
+    if (!doc.file) return doc;
+    const safeName = normalizeFileName(doc.file.name);
+    const path = `${costeo.id}/${safeName}`;
+    // Elimina cualquier versión previa
+    await storage.remove([path]).catch(() => {});
+    // Sube el nuevo
+    const { error: uploadError } = await storage.upload(path, doc.file, {
+      upsert: true,
+    });
+    if (uploadError) throw uploadError;
+    uploadedPaths.push(path);
+    return { 
+      id: path, 
+      nombre: doc.file.name, 
+      url: path, 
+      path, 
+      bucket: 'costeos' 
+    };
+  }
+
+  // Procesar listas de referencias
+  const refsFormato   = costeo.referenciasFormatoMedidas   ?? [];
+  const refsComunic   = costeo.referenciasComunicaciones   ?? [];
+  const refsImagenes  = costeo.referenciasImagenes         ?? [];
+
+  const [ formatoProcesadas,
+          comunicProcesadas,
+          imagenesProcesadas ] = await Promise.all([
+    Promise.all(refsFormato.map(uploadDoc)),
+    Promise.all(refsComunic.map(uploadDoc)),
+    Promise.all(refsImagenes.map(uploadDoc)),
+  ]);
+
+  // =========================
+  // 1. DEDUPLICACIÓN DE CLIENTE
+  // =========================
+  function clienteEsVacio(cliente: typeof clienteData) {
+    return (
+      (!cliente.nombreCompleto || cliente.nombreCompleto.trim() === '') &&
+      (!cliente.correoElectronico || cliente.correoElectronico.trim() === '') &&
+      (!cliente.celular || cliente.celular.trim() === '')
+    );
+  }
+  let clienteid = costeo.clienteid;
+  const clienteData = {
+    nombreCompleto: costeo.nombreCompleto,
+    correoElectronico: costeo.correoElectronico,
+    celular: costeo.celular,
+    empresaid: costeo.empresaid,
+    sucursalid: costeo.sucursalid
+  };
+
+  // Busca cliente existente por correo y empresa
+  if (!clienteid && costeo.correoElectronico && costeo.empresaid) {
+    const { data: clienteExistente, error: errorBusqueda } = await supabase
+      .from('clientes')
+      .select('id')
+      .eq('correoElectronico', costeo.correoElectronico)
+      .eq('empresaid', costeo.empresaid)
+      .limit(1)
+      .single();
+
+    // Si encontró un cliente, lo usa y actualiza datos (por si cambió nombre o teléfono)
+    if (clienteExistente && clienteExistente.id) {
+      clienteid = clienteExistente.id;
+      await supabase
+        .from('clientes')
+        .update(clienteData)
+        .eq('id', clienteid);
+    }
+    // Si error no es "not found" (PGRST116), lo arroja
+    else if (errorBusqueda && errorBusqueda.code !== 'PGRST116') {
+      throw errorBusqueda;
+    }
+  }
+
+  // Si no existe cliente aún, lo inserta
+  if (!clienteid && !clienteEsVacio(clienteData)) {
+  const insertResult = await supabase
+    .from('clientes')
+    .insert(clienteData)
+    .select();
+  if (insertResult.error) throw insertResult.error;
+  const nuevos = insertResult.data!;
+  if (nuevos.length > 0) {
+    clienteid = nuevos[0].id;
+  }
+}
+
+
+  // =========================
+  // 2. UPSET DEL COSTEO
+  // =========================
+  const payload: Costeo = {
+    ...costeo,
+    clienteid,
+    referenciasFormatoMedidas: formatoProcesadas,
+    referenciasComunicaciones: comunicProcesadas,
+    referenciasImagenes:       imagenesProcesadas,
+  };
+
+  try {
+    // Upsert del costeo
+    const { data, error } = await supabase
+      .from('costeo')
+      .upsert(payload, { onConflict: 'id' })
+      .select();
+    if (error) throw error;
+    return data![0];
+  } catch (err) {
+    // Si falla, borra archivos subidos
+    if (uploadedPaths.length) {
+      await storage.remove(uploadedPaths).catch(() => {});
+    }
+    throw err;
+  }
+}
+
+
+export async function actualizarCosteo2(
+  costeo: Costeo
+): Promise<Costeo> {
+  const storage = supabase.storage.from('costeos');
+  const uploadedPaths: string[] = [];
+
   // Sube un documento y devuelve el Document completo con path/url
   async function uploadDoc(doc: Document): Promise<Document> {
     if (!doc.file) return doc;

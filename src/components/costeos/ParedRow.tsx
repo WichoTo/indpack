@@ -5,7 +5,10 @@ import {
   MenuItem,
   TextField,
   Typography,
-  FormControl
+  FormControl,
+  InputLabel,
+  Divider,
+  Paper,
 } from '@mui/material';
 import {
   handleCalcularTotales,
@@ -29,7 +32,7 @@ const ParedRow: React.FC<Props> = ({
   tiposMateriales
 }) => {
 
-  // Si cambiamos a Huacal, limpias tipoParedes y recalculas grosor + totales
+  // Limpia tipoParedes si es Huacal
   useEffect(() => {
     if (producto.tipoEquipo === 'Huacal' && producto.paredes?.tipoParedes) {
       setCosteo(prev => {
@@ -53,36 +56,31 @@ const ParedRow: React.FC<Props> = ({
   }, [producto.tipoEquipo, producto.paredes?.tipoParedes]);
 
   return (
-    <Box
-      display="grid"
-      gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr' }}
-      gap={2}
-      mb={1}
-      alignItems="center"
+    <Paper
+      variant="outlined"
+      sx={{
+        p: { xs: 2, sm: 3 },
+        mb: 2,
+        background: "#fafbfc",
+        borderLeft: "4px solid var(--primary-color)"
+      }}
     >
-      <Box gridColumn="1 / -1">
-        <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
-          CAJA
-        </Typography>
-      </Box>
-      <Box gridColumn="1 / -1">
-        <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
-          Paredes
-        </Typography>
-        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
-          Tipo de Paredes
-        </Typography>
-      </Box>
+      <Typography variant="h6" fontWeight={900} color="var(--primary-color)" sx={{ mb: 1 }}>
+        Caja - Paredes
+      </Typography>
 
-      {/* Solo mostramos el selector de tipoParedes si NO es Huacal */}
+      {/* Selector de TipoParedes */}
       {producto.tipoEquipo !== 'Huacal' && (
-        <Box gridColumn="1 / -1">
-          <FormControl fullWidth>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle1" fontWeight={700} color="var(--primary-color)" mb={1}>
+            Tipo de Paredes
+          </Typography>
+          <FormControl fullWidth size="small">
+            <InputLabel>Tipo de Paredes</InputLabel>
             <Select
-              size="small"
-              margin="dense"
               name="tipoParedes"
               value={producto.paredes?.tipoParedes ?? ''}
+              label="Tipo de Paredes"
               displayEmpty
               onChange={e => {
                 const nuevoTipo = e.target.value as string;
@@ -109,7 +107,7 @@ const ParedRow: React.FC<Props> = ({
                   };
                 });
                 handleCalcularTotales(producto.id, setCosteo, materiales);
-                handleMedidasProductoChange(producto.id, setCosteo, materiales)
+                handleMedidasProductoChange(producto.id, setCosteo, materiales);
               }}
             >
               <MenuItem value="">
@@ -125,160 +123,175 @@ const ParedRow: React.FC<Props> = ({
         </Box>
       )}
 
-      {/* Campos de dimensiones (SIEMPRE visibles) */}
-      <TextField
-        size="small"
-        margin="dense"
-        fullWidth
-        label="Largo 2y4"
-        type="number"
-        value={producto.paredes?.largo2y4 ?? 0}
-        onChange={e => {
-          const v = parseFloat(e.target.value);
-          setCosteo(prev => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              productos: prev.productos.map(p =>
-                p.id === producto.id
-                  ? { ...p, paredes: { ...p.paredes!, largo2y4: v } }
-                  : p
-              )
-            };
-          });
-          handleCalcularTotales(producto.id, setCosteo, materiales);
-        }}
-      />
-      <TextField
-        size="small"
-        margin="dense"
-        fullWidth
-        label="Alto 2y4"
-        type="number"
-        value={producto.paredes?.alto2y4 ?? 0}
-        onChange={e => {
-          const v = parseFloat(e.target.value);
-          setCosteo(prev => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              productos: prev.productos.map(p =>
-                p.id === producto.id
-                  ? { ...p, paredes: { ...p.paredes!, alto2y4: v } }
-                  : p
-              )
-            };
-          });
-          handleCalcularTotales(producto.id, setCosteo, materiales);
-        }}
-      />
-      <TextField
-        size="small"
-        margin="dense"
-        fullWidth
-        label="Largo 1y3"
-        type="number"
-        value={producto.paredes?.largo1y3 ?? 0}
-        onChange={e => {
-          const v = parseFloat(e.target.value);
-          setCosteo(prev => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              productos: prev.productos.map(p =>
-                p.id === producto.id
-                  ? { ...p, paredes: { ...p.paredes!, largo1y3: v } }
-                  : p
-              )
-            };
-          });
-          handleCalcularTotales(producto.id, setCosteo, materiales);
-        }}
-      />
-      <TextField
-        size="small"
-        margin="dense"
-        fullWidth
-        label="Alto 1y3"
-        type="number"
-        value={producto.paredes?.alto1y3 ?? 0}
-        onChange={e => {
-          const v = parseFloat(e.target.value);
-          setCosteo(prev => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              productos: prev.productos.map(p =>
-                p.id === producto.id
-                  ? { ...p, paredes: { ...p.paredes!, alto1y3: v } }
-                  : p
-              )
-            };
-          });
-          handleCalcularTotales(producto.id, setCosteo, materiales);
-        }}
-      />
-      <TextField
-        size="small"
-        margin="dense"
-        fullWidth
-        label="Largo Techo"
-        type="number"
-        value={producto.paredes?.largoTecho ?? 0}
-        onChange={e => {
-          const v = parseFloat(e.target.value);
-          setCosteo(prev => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              productos: prev.productos.map(p =>
-                p.id === producto.id
-                  ? { ...p, paredes: { ...p.paredes!, largoTecho: v } }
-                  : p
-              )
-            };
-          });
-          handleCalcularTotales(producto.id, setCosteo, materiales);
-        }}
-      />
-      <TextField
-        size="small"
-        margin="dense"
-        fullWidth
-        label="Alto Techo"
-        type="number"
-        value={producto.paredes?.altoTecho ?? 0}
-        onChange={e => {
-          const v = parseFloat(e.target.value);
-          setCosteo(prev => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              productos: prev.productos.map(p =>
-                p.id === producto.id
-                  ? { ...p, paredes: { ...p.paredes!, altoTecho: v } }
-                  : p
-              )
-            };
-          });
-          handleCalcularTotales(producto.id, setCosteo, materiales);
-        }}
-      />
+      <Divider sx={{ my: 2 }} />
 
-      {/* Tipo de Marco SIEMPRE visible */}
-      <Box gridColumn="1 / -1">
+      {/* Campos de dimensiones */}
+      <Box
+        display="grid"
+        gridTemplateColumns={{
+          xs: '1fr',
+          sm: '1fr 1fr'
+        }}
+        gap={2}
+        alignItems="center"
+        mb={2}
+      >
+        <TextField
+          size="small"
+          margin="dense"
+          fullWidth
+          label="Largo 2 y 4"
+          type="number"
+          value={producto.paredes?.largo2y4 ?? 0}
+          onChange={e => {
+            const v = parseFloat(e.target.value);
+            setCosteo(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                productos: prev.productos.map(p =>
+                  p.id === producto.id
+                    ? { ...p, paredes: { ...p.paredes!, largo2y4: v } }
+                    : p
+                )
+              };
+            });
+            handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+        <TextField
+          size="small"
+          margin="dense"
+          fullWidth
+          label="Alto 2 y 4"
+          type="number"
+          value={producto.paredes?.alto2y4 ?? 0}
+          onChange={e => {
+            const v = parseFloat(e.target.value);
+            setCosteo(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                productos: prev.productos.map(p =>
+                  p.id === producto.id
+                    ? { ...p, paredes: { ...p.paredes!, alto2y4: v } }
+                    : p
+                )
+              };
+            });
+            handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+        <TextField
+          size="small"
+          margin="dense"
+          fullWidth
+          label="Largo 1 y 3"
+          type="number"
+          value={producto.paredes?.largo1y3 ?? 0}
+          onChange={e => {
+            const v = parseFloat(e.target.value);
+            setCosteo(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                productos: prev.productos.map(p =>
+                  p.id === producto.id
+                    ? { ...p, paredes: { ...p.paredes!, largo1y3: v } }
+                    : p
+                )
+              };
+            });
+            handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+        <TextField
+          size="small"
+          margin="dense"
+          fullWidth
+          label="Alto 1 y 3"
+          type="number"
+          value={producto.paredes?.alto1y3 ?? 0}
+          onChange={e => {
+            const v = parseFloat(e.target.value);
+            setCosteo(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                productos: prev.productos.map(p =>
+                  p.id === producto.id
+                    ? { ...p, paredes: { ...p.paredes!, alto1y3: v } }
+                    : p
+                )
+              };
+            });
+            handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+        <TextField
+          size="small"
+          margin="dense"
+          fullWidth
+          label="Largo Techo"
+          type="number"
+          value={producto.paredes?.largoTecho ?? 0}
+          onChange={e => {
+            const v = parseFloat(e.target.value);
+            setCosteo(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                productos: prev.productos.map(p =>
+                  p.id === producto.id
+                    ? { ...p, paredes: { ...p.paredes!, largoTecho: v } }
+                    : p
+                )
+              };
+            });
+            handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+        <TextField
+          size="small"
+          margin="dense"
+          fullWidth
+          label="Alto Techo"
+          type="number"
+          value={producto.paredes?.altoTecho ?? 0}
+          onChange={e => {
+            const v = parseFloat(e.target.value);
+            setCosteo(prev => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                productos: prev.productos.map(p =>
+                  p.id === producto.id
+                    ? { ...p, paredes: { ...p.paredes!, altoTecho: v } }
+                    : p
+                )
+              };
+            });
+            handleCalcularTotales(producto.id, setCosteo, materiales);
+          }}
+        />
+      </Box>
+
+      <Divider sx={{ my: 2 }} />
+
+      {/* Selector de tipo de marco */}
+      <Box>
         <Typography
           variant="subtitle1"
-          sx={{ fontWeight: 'bold', mb: 1, color: 'var(--primary-color)' }}
+          sx={{ fontWeight: 700, mb: 1, color: 'var(--primary-color)' }}
         >
           Tipo de Marco
         </Typography>
-        <FormControl fullWidth>
+        <FormControl fullWidth size="small">
+          <InputLabel>Tipo de Marco</InputLabel>
           <Select
-            size="small"
-            margin="dense"
             name="tipoMarco"
-            value={producto.paredes.tipoMarco || "T7/8"}
+            value={producto.paredes?.tipoMarco || "T7/8"}
+            label="Tipo de Marco"
             onChange={e => {
               const val = e.target.value as string;
               setCosteo(prev => {
@@ -305,7 +318,7 @@ const ParedRow: React.FC<Props> = ({
           </Select>
         </FormControl>
       </Box>
-    </Box>
+    </Paper>
   );
 };
 

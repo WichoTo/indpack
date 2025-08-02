@@ -6,7 +6,10 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  TextField
+  TextField,
+  Divider,
+  Paper,
+  useTheme,
 } from '@mui/material';
 import {
   Costeo,
@@ -16,7 +19,8 @@ import {
   TipoTacon,
   Tacon
 } from '../../config/types';
-import {  calcularTipoPolinAbajoPorPeso, handleCalcularTotales } from '../../hooks/useFetchCosteo';
+
+import { calcularTipoPolinAbajoPorPeso, handleCalcularTotales } from '../../hooks/useFetchCosteo';
 
 interface TaconesRowProps {
   producto: Producto;
@@ -26,8 +30,14 @@ interface TaconesRowProps {
   tiposMateriales: Record<string, string[]>;
 }
 
-const TaconesRow: React.FC<TaconesRowProps> = ({ producto,  setCosteo, materiales, tiposMateriales }) => {
-  //const tipoPolinComun = producto.polinesAbajo?.[0]?.tipo || '';
+const TaconesRow: React.FC<TaconesRowProps> = ({
+  producto,
+  setCosteo,
+  materiales,
+  tiposMateriales
+}) => {
+  const theme = useTheme();
+
   const onTipoChange = (nuevoTipo: TipoTacon) => {
     setCosteo(prev => {
       if (!prev) return prev;
@@ -36,22 +46,30 @@ const TaconesRow: React.FC<TaconesRowProps> = ({ producto,  setCosteo, materiale
         productos: prev.productos.map(p => {
           if (p.id !== producto.id) return p;
           if (nuevoTipo === 'Corrido') {
-            // inicializar tacon corrido
-            const tipoPolin = calcularTipoPolinAbajoPorPeso(producto.peso ?? 0,producto.largoEmpaque,materiales, !!producto.polinesFijacion?.length);
+            const tipoPolin = calcularTipoPolinAbajoPorPeso(
+              producto.peso ?? 0,
+              producto.largoEmpaque,
+              materiales,
+              !!producto.polinesFijacion?.length
+            );
             return {
               ...p,
               tipoTacon: 'Corrido',
               tacon: {
                 tipoCorral: 'Corrido',
-                tipoPolin,  
+                tipoPolin,
                 cantidad: 3,
                 medida: p.anchoEmpaque
               } as TaconCorrido
             };
           }
           if (nuevoTipo === 'Pieza') {
-            // inicializar tacon por pieza con default cantidad 0 y polin calculado
-            const tipoPolin = calcularTipoPolinAbajoPorPeso(producto.peso ?? 0,producto.largoEmpaque,materiales, !!producto.polinesFijacion?.length);
+            const tipoPolin = calcularTipoPolinAbajoPorPeso(
+              producto.peso ?? 0,
+              producto.largoEmpaque,
+              materiales,
+              !!producto.polinesFijacion?.length
+            );
             return {
               ...p,
               tipoTacon: 'Pieza',
@@ -61,7 +79,6 @@ const TaconesRow: React.FC<TaconesRowProps> = ({ producto,  setCosteo, materiale
               } as TaconPieza
             };
           }
-          // Sin tacones
           return { ...p, tipoTacon: '', tacon: {} as Tacon };
         })
       };
@@ -69,7 +86,6 @@ const TaconesRow: React.FC<TaconesRowProps> = ({ producto,  setCosteo, materiale
     handleCalcularTotales(producto.id, setCosteo, materiales);
   };
 
-  // cuando cambia cantidad en pieza o corrido, siempre existe tacon inicial
   const onCantidadChange = (valor: number) => {
     setCosteo(prev => {
       if (!prev) return prev;
@@ -119,43 +135,76 @@ const TaconesRow: React.FC<TaconesRowProps> = ({ producto,  setCosteo, materiale
   };
 
   return (
-    <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: '1fr 1fr 1fr' }} gap={2} mb={1}>
-
-      <Box sx={{ gridColumn: 'span 3' }}>
-        <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
-          TACONES
+    <Paper
+      variant="outlined"
+      sx={{
+        p: { xs: 2, md: 3 },
+        mb: 2,
+        background: "#f6f8fa",
+        borderLeft: `5px solid ${theme.palette.primary.main}`,
+      }}
+    >
+      <Box mb={2}>
+        <Typography variant="h6" fontWeight={900} color="var(--primary-color)">
+          Tacones
         </Typography>
+        <Divider sx={{ mt: 0.5, mb: 1.5 }} />
       </Box>
 
-      <FormControl fullWidth size="small" margin="dense">
-        <InputLabel id="label-tipo-tacon">Tipo Tacón</InputLabel>
-        <Select
-          labelId="label-tipo-tacon"
-          value={producto.tipoTacon || ''}
-          label="Tipo Tacón"
-          onChange={e => onTipoChange(e.target.value as TipoTacon)}
+      {/* Fila 1: Tipo Tacón SIEMPRE arriba */}
+      <Box display="grid" gridTemplateColumns="1fr" mb={2}>
+        <FormControl fullWidth size="small">
+          <InputLabel id="label-tipo-tacon">Tipo de Tacón</InputLabel>
+          <Select
+            labelId="label-tipo-tacon"
+            value={producto.tipoTacon || ''}
+            label="Tipo de Tacón"
+            onChange={e => onTipoChange(e.target.value as TipoTacon)}
+          >
+            <MenuItem value="">Sin Tacones</MenuItem>
+            <MenuItem value="Corrido">Tacón Corrido</MenuItem>
+            <MenuItem value="Pieza">Tacón por Pieza</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
+      {/* Fila 2: Campos dependientes */}
+      {producto.tipoTacon && (
+        <Box
+          display="grid"
+          gridTemplateColumns={{
+            xs: '1fr',
+            sm: producto.tipoTacon === "Corrido" ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)',
+          }}
+          gap={2}
+          alignItems="center"
         >
-          <MenuItem value="">Sin Tacones</MenuItem>
-          <MenuItem value="Corrido">Tacon Corrido</MenuItem>
-          <MenuItem value="Pieza">Tacon por Pieza</MenuItem>
-        </Select>
-      </FormControl>
-
-      {producto.tipoTacon === 'Corrido' && (
-        <>
+          {/* Cantidad */}
           <TextField
+            fullWidth
             size="small"
-            margin="dense"
             label="Cantidad"
             type="number"
-            value={(producto.tacon as TaconCorrido).cantidad}
+            value={
+              producto.tipoTacon === "Corrido"
+                ? (producto.tacon as TaconCorrido).cantidad ?? ""
+                : (producto.tacon as TaconPieza).cantidad ?? ""
+            }
             onChange={e => onCantidadChange(Number(e.target.value) || 0)}
+            inputProps={{ min: 0 }}
           />
-          <FormControl fullWidth size="small" margin="dense">
-            <InputLabel id="label-polin-corrido">Tipo Polín</InputLabel>
+          {/* Tipo Polin */}
+          <FormControl fullWidth size="small">
+            <InputLabel id="label-polin">
+              {producto.tipoTacon === "Corrido" ? "Tipo Polín" : "Tipo Polín"}
+            </InputLabel>
             <Select
-              labelId="label-polin-corrido"
-              value={(producto.tacon as TaconCorrido).tipoPolin}
+              labelId="label-polin"
+              value={
+                producto.tipoTacon === "Corrido"
+                  ? (producto.tacon as TaconCorrido).tipoPolin ?? ""
+                  : (producto.tacon as TaconPieza).tipoPolin ?? ""
+              }
               label="Tipo Polín"
               onChange={e => onTipoPolinChange(e.target.value)}
             >
@@ -164,44 +213,21 @@ const TaconesRow: React.FC<TaconesRowProps> = ({ producto,  setCosteo, materiale
               ))}
             </Select>
           </FormControl>
-          <TextField
-            size="small"
-            margin="dense"
-            label="Medida"
-            type="number"
-            value={(producto.tacon as TaconCorrido).medida}
-            onChange={e => onMedidaChange(Number(e.target.value) || 0)}
-          />
-        </>
+          {/* Medida SOLO en Corrido */}
+          {producto.tipoTacon === "Corrido" && (
+            <TextField
+              fullWidth
+              size="small"
+              label="Medida"
+              type="number"
+              value={(producto.tacon as TaconCorrido).medida ?? ""}
+              onChange={e => onMedidaChange(Number(e.target.value) || 0)}
+              inputProps={{ min: 0 }}
+            />
+          )}
+        </Box>
       )}
-
-      {producto.tipoTacon === 'Pieza' && (
-        <>
-          <TextField
-            size="small"
-            margin="dense"
-            label="Cantidad"
-            type="number"
-            value={(producto.tacon as TaconPieza).cantidad}
-            onChange={e => onCantidadChange(Number(e.target.value) || 0)}
-          />
-          <FormControl fullWidth size="small" margin="dense">
-            <InputLabel id="label-polin-pieza">Tipo Polín</InputLabel>
-            <Select
-              labelId="label-polin-pieza"
-              value={(producto.tacon as TaconPieza).tipoPolin}
-              label="Tipo Polín"
-              onChange={e => onTipoPolinChange(e.target.value)}
-            >
-              {tiposMateriales.Polines.map(v => (
-                <MenuItem key={v} value={v}>{v}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </>
-      )}
-
-    </Box>
+    </Paper>
   );
 };
 
